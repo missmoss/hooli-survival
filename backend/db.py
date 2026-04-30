@@ -11,7 +11,9 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 def _normalize_database_url(raw_url: str) -> str:
     url = (raw_url or "").strip() or "sqlite:///./office_sim.db"
     if url.startswith("postgres://"):
-        return "postgresql://" + url[len("postgres://") :]
+        url = "postgresql://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
     return url
 
 
@@ -26,7 +28,7 @@ def _database_url_from_parts() -> str | None:
     port = os.getenv("DB_PORT", "").strip() or "5432"
     encoded_user = quote_plus(user)
     encoded_password = quote_plus(password)
-    return f"postgresql://{encoded_user}:{encoded_password}@{host}:{port}/{name}"
+    return f"postgresql+psycopg://{encoded_user}:{encoded_password}@{host}:{port}/{name}"
 
 
 DATABASE_URL = _normalize_database_url(os.getenv("DATABASE_URL") or _database_url_from_parts() or "sqlite:///./office_sim.db")
@@ -43,7 +45,7 @@ else:
     engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
     engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "10"))
     engine_kwargs["pool_recycle"] = int(os.getenv("DB_POOL_RECYCLE", "1800"))
-    if DATABASE_URL.startswith("postgresql://") and "sslmode=" not in DATABASE_URL:
+    if DATABASE_URL.startswith("postgresql+psycopg://") and "sslmode=" not in DATABASE_URL:
         connect_args["sslmode"] = os.getenv("DB_SSLMODE", "require")
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args, **engine_kwargs)

@@ -42,7 +42,7 @@ def test_db_normalizes_postgres_scheme(tmp_path, monkeypatch):
 
     db_module = importlib.import_module("db")
 
-    assert db_module.DATABASE_URL == "postgresql://user:pass@localhost:5432/office_sim"
+    assert db_module.DATABASE_URL == "postgresql+psycopg://user:pass@localhost:5432/office_sim"
 
 
 def test_db_can_build_url_from_split_env_vars(tmp_path, monkeypatch):
@@ -57,7 +57,7 @@ def test_db_can_build_url_from_split_env_vars(tmp_path, monkeypatch):
 
     db_module = importlib.import_module("db")
 
-    assert db_module.DATABASE_URL == "postgresql://postgres.user:p%40ss+word@db.example.supabase.co:6543/postgres"
+    assert db_module.DATABASE_URL == "postgresql+psycopg://postgres.user:p%40ss+word@db.example.supabase.co:6543/postgres"
 
 
 def test_cross_site_cookie_settings_are_applied(tmp_path, monkeypatch):
