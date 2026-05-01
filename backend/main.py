@@ -504,7 +504,7 @@ def _story_fallback_text(locale: str | None) -> str:
 
 
 def _story_length_limit(locale: str | None) -> int:
-    return 275 if _is_zh(locale) else 170
+    return 310 if _is_zh(locale) else 170
 
 
 def _story_length_metric(text: str, locale: str | None) -> int:
