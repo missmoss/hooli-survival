@@ -14,7 +14,7 @@ from sqlalchemy import asc, desc, select, text
 from sqlalchemy.orm import Session
 
 from ai import evaluate_rating, generate_perf_artifact, story_response, summarize_memory
-from db import GameSession, Message, SceneLog, SessionLocal, prepare_db
+from db import GameSession, Message, SceneLog, SessionDebugEvent, SessionLocal, prepare_db
 from events import (
     REORG_EVENT_ID,
     REORG_COOLDOWN_EVENTS,
@@ -741,6 +741,74 @@ def _session_meta_from_request(request: Request) -> dict:
     return {key: value for key, value in meta.items() if value}
 
 
+def _request_id_from_request(request: Request) -> str | None:
+    for header in ("x-request-id", "x-vercel-id"):
+        value = request.headers.get(header, "").strip()
+        if value:
+            return value
+    return None
+
+
+def _cookie_config_snapshot() -> dict[str, object | None]:
+    return {
+        "cookie_name": SESSION_COOKIE_NAME,
+        "cookie_secure": SESSION_COOKIE_SECURE,
+        "cookie_samesite": SESSION_COOKIE_SAMESITE,
+        "cookie_domain": SESSION_COOKIE_DOMAIN,
+        "cookie_path": "/",
+        "cookie_max_age_seconds": SESSION_COOKIE_MAX_AGE_SECONDS,
+    }
+
+
+def _record_session_debug_event(
+    db: Session,
+    request: Request,
+    event_type: str,
+    *,
+    session_id: str | None = None,
+    requested_session_id: str | None = None,
+    cookie_session_id: str | None = None,
+    cookie_present: bool | None = None,
+    notes: str | None = None,
+) -> None:
+    cookie_names = sorted(request.cookies.keys())
+    snapshot = _cookie_config_snapshot()
+    event = SessionDebugEvent(
+        event_type=event_type,
+        request_id=_request_id_from_request(request),
+        session_id=session_id,
+        requested_session_id=requested_session_id,
+        cookie_session_id=cookie_session_id,
+        cookie_present=bool(cookie_names) if cookie_present is None else cookie_present,
+        cookie_names=cookie_names,
+        cookie_count=len(cookie_names),
+        method=request.method,
+        path=request.url.path,
+        query_string=request.url.query or None,
+        origin=request.headers.get("origin", "").strip() or None,
+        referer=request.headers.get("referer", "").strip() or None,
+        host=request.headers.get("host", "").strip() or None,
+        x_forwarded_host=request.headers.get("x-forwarded-host", "").strip() or None,
+        x_forwarded_proto=request.headers.get("x-forwarded-proto", "").strip() or None,
+        sec_fetch_site=request.headers.get("sec-fetch-site", "").strip() or None,
+        sec_fetch_mode=request.headers.get("sec-fetch-mode", "").strip() or None,
+        sec_fetch_dest=request.headers.get("sec-fetch-dest", "").strip() or None,
+        browser_id_header=_browser_id_from_request(request),
+        user_agent=request.headers.get("user-agent", "").strip() or None,
+        ip=_client_ip(request),
+        cookie_name=str(snapshot["cookie_name"]),
+        cookie_secure=bool(snapshot["cookie_secure"]),
+        cookie_samesite=str(snapshot["cookie_samesite"]) if snapshot["cookie_samesite"] is not None else None,
+        cookie_domain=str(snapshot["cookie_domain"]) if snapshot["cookie_domain"] is not None else None,
+        cookie_path=str(snapshot["cookie_path"]) if snapshot["cookie_path"] is not None else None,
+        cookie_max_age_seconds=int(snapshot["cookie_max_age_seconds"])
+        if snapshot["cookie_max_age_seconds"] is not None
+        else None,
+        notes=notes,
+    )
+    db.add(event)
+
+
 def _set_session_cookie(response: Response, session_id: str) -> None:
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -783,9 +851,20 @@ def _consume_turn_rate_limit(request: Request, session_id: str) -> None:
     TURN_REQUEST_LIMITER[limiter_key] = (current_minute, saved_count + 1)
 
 
-def _require_session_cookie(request: Request, session_id: str) -> None:
+def _require_session_cookie(request: Request, session_id: str, db: Session) -> None:
     cookie_session_id = request.cookies.get(SESSION_COOKIE_NAME, "").strip()
     if not cookie_session_id or cookie_session_id != session_id:
+        _record_session_debug_event(
+            db,
+            request,
+            "cookie_mismatch",
+            session_id=session_id,
+            requested_session_id=session_id,
+            cookie_session_id=cookie_session_id or None,
+            cookie_present=bool(cookie_session_id),
+            notes="Session cookie does not match the requested session",
+        )
+        db.commit()
         raise HTTPException(status_code=403, detail="Session cookie does not match the requested session")
 
 
@@ -3296,6 +3375,15 @@ def create_session(
     )
     _set_current_options(game_session, options)
     db.add(Message(scene_log_id=scene_log.id, role="assistant", content=opening_narration))
+    _record_session_debug_event(
+        db,
+        request,
+        "session_created",
+        session_id=game_session.id,
+        requested_session_id=game_session.id,
+        cookie_session_id=game_session.id,
+        cookie_present=bool(request.cookies.get(SESSION_COOKIE_NAME, "").strip()),
+    )
     db.commit()
     _set_session_cookie(response, game_session.id)
 
@@ -3437,6 +3525,15 @@ def dev_create_perf_review_fixture(
     opening_narration, options = _build_perf_opening(db, game_session)
     _set_current_options(game_session, options)
     db.add(Message(scene_log_id=perf_scene.id, role="assistant", content=opening_narration))
+    _record_session_debug_event(
+        db,
+        request,
+        "session_created",
+        session_id=game_session.id,
+        requested_session_id=game_session.id,
+        cookie_session_id=game_session.id,
+        cookie_present=bool(request.cookies.get(SESSION_COOKIE_NAME, "").strip()),
+    )
     db.commit()
     _set_session_cookie(response, game_session.id)
     return {
@@ -3465,7 +3562,7 @@ def take_turn(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
-    _require_session_cookie(request, session_id)
+    _require_session_cookie(request, session_id, db)
     _consume_turn_rate_limit(request, session_id)
     session = db.get(GameSession, session_id)
     if session is None:
@@ -3613,7 +3710,7 @@ def take_turn(
 
 @app.get("/sessions/{session_id}/next-scene")
 def next_scene(session_id: str, request: Request, db: Session = Depends(get_db)):
-    _require_session_cookie(request, session_id)
+    _require_session_cookie(request, session_id, db)
     session = db.get(GameSession, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -3647,7 +3744,7 @@ def next_scene(session_id: str, request: Request, db: Session = Depends(get_db))
 
 @app.get("/sessions/{session_id}")
 def get_session_state(session_id: str, request: Request, db: Session = Depends(get_db)):
-    _require_session_cookie(request, session_id)
+    _require_session_cookie(request, session_id, db)
     session = db.get(GameSession, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")

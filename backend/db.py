@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, create_engine, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, JSON, String, Text, create_engine, func, text
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship, sessionmaker
 
 
@@ -143,6 +143,52 @@ class Message(Base):
     )
 
     scene_log: Mapped[SceneLog] = relationship(back_populates="messages")
+
+
+class SessionDebugEvent(Base):
+    __tablename__ = "session_debug_events"
+    __table_args__ = (
+        Index("session_debug_events_created_at_idx", "created_at"),
+        Index("session_debug_events_event_type_created_at_idx", "event_type", "created_at"),
+        Index("session_debug_events_session_id_idx", "session_id"),
+        Index("session_debug_events_requested_session_id_idx", "requested_session_id"),
+        Index("session_debug_events_cookie_session_id_idx", "cookie_session_id"),
+        Index("session_debug_events_browser_id_header_idx", "browser_id_header"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    event_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    requested_session_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    cookie_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cookie_present: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    cookie_names: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    cookie_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    method: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    query_string: Mapped[str | None] = mapped_column(Text, nullable=True)
+    origin: Mapped[str | None] = mapped_column(Text, nullable=True)
+    referer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    host: Mapped[str | None] = mapped_column(Text, nullable=True)
+    x_forwarded_host: Mapped[str | None] = mapped_column(Text, nullable=True)
+    x_forwarded_proto: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sec_fetch_site: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sec_fetch_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sec_fetch_dest: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    browser_id_header: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cookie_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    cookie_secure: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    cookie_samesite: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    cookie_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cookie_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cookie_max_age_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, server_default=func.now(), nullable=False
+    )
 
 
 def init_db() -> None:

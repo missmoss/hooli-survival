@@ -105,6 +105,18 @@ def test_browser_id_and_session_meta_are_persisted(tmp_path, monkeypatch):
         assert session is not None
         assert session.browser_id == "br_testclient1234"
         assert session.session_meta["browser_id"] == "br_testclient1234"
+        events = (
+            db.query(db_module.SessionDebugEvent)
+            .filter(db_module.SessionDebugEvent.session_id == session_id)
+            .order_by(db_module.SessionDebugEvent.created_at.asc())
+            .all()
+        )
+        assert len(events) == 1
+        assert events[0].event_type == "session_created"
+        assert events[0].requested_session_id == session_id
+        assert events[0].cookie_session_id == session_id
+        assert events[0].browser_id_header == "br_testclient1234"
+        assert events[0].cookie_name == "office_sim_session"
     finally:
         db.close()
 
@@ -112,6 +124,7 @@ def test_browser_id_and_session_meta_are_persisted(tmp_path, monkeypatch):
 def test_session_routes_require_matching_cookie(tmp_path, monkeypatch):
     modules = _reload_modules(tmp_path, monkeypatch)
     main = modules["main"]
+    db_module = modules["db"]
     main.story_response = lambda system_prompt, messages: ("Scene opens.", {"source": "test_opening", "attempts": []})
 
     with TestClient(main.app) as client:
@@ -123,6 +136,23 @@ def test_session_routes_require_matching_cookie(tmp_path, monkeypatch):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Session cookie does not match the requested session"
+    db = db_module.SessionLocal()
+    try:
+        events = (
+            db.query(db_module.SessionDebugEvent)
+            .filter(db_module.SessionDebugEvent.requested_session_id == session_id)
+            .order_by(db_module.SessionDebugEvent.created_at.asc())
+            .all()
+        )
+        assert [event.event_type for event in events] == ["session_created", "cookie_mismatch"]
+        mismatch = events[-1]
+        assert mismatch.session_id == session_id
+        assert mismatch.cookie_session_id is None
+        assert mismatch.cookie_present is False
+        assert mismatch.path == f"/sessions/{session_id}"
+        assert mismatch.notes == "Session cookie does not match the requested session"
+    finally:
+        db.close()
 
 
 def test_turn_rate_limit_is_enforced(tmp_path, monkeypatch):
