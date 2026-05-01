@@ -78,6 +78,10 @@ def _dev_tools_enabled() -> bool:
     return _bool_env("OFFICE_SIM_ENABLE_DEV_ENDPOINTS", os.getenv("APP_ENV", "development") != "production")
 
 
+def _is_production() -> bool:
+    return os.getenv("APP_ENV", "development") == "production"
+
+
 def _ai_retry_later_detail(locale: str | None) -> str:
     return "AI 服務暫時不可用，請晚點再來。" if _is_zh(locale) else "AI services are temporarily unavailable. Please try again later."
 
@@ -105,7 +109,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url=None if _is_production() else "/docs",
+    redoc_url=None if _is_production() else "/redoc",
+    openapi_url=None if _is_production() else "/openapi.json",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -178,6 +187,7 @@ TERMINAL_PUNCTUATION_RE = re.compile(r"[。！？.!?」』\"']\s*$")
 CONTEXT_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{2,}|[\u4e00-\u9fff]{2,6}")
 MARKDOWN_FENCE_RE = re.compile(r"^\s*```")
 MARKDOWN_RULE_RE = re.compile(r"^\s*([-*_])(?:\s*\1){2,}\s*$")
+EN_WORD_RE = re.compile(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*")
 CONTEXT_STOPWORDS = {
     "先",
     "這個",
@@ -491,6 +501,75 @@ def _story_fallback_text(locale: str | None) -> str:
     if _is_zh(locale):
         return "（系統暫時無法產生場景內容，請稍後再試。）"
     return "(The system could not generate the scene right now. Please try again shortly.)"
+
+
+def _story_length_limit(locale: str | None) -> int:
+    return 275 if _is_zh(locale) else 170
+
+
+def _story_length_metric(text: str, locale: str | None) -> int:
+    stripped = (text or "").strip()
+    if not stripped:
+        return 0
+    if _is_zh(locale):
+        return len(re.sub(r"\s+", "", stripped))
+    return len(EN_WORD_RE.findall(stripped))
+
+
+def _story_too_long(text: str, locale: str | None) -> bool:
+    return _story_length_metric(text, locale) > _story_length_limit(locale)
+
+
+def _length_rewrite_note(locale: str | None) -> str:
+    if _is_zh(locale):
+        return (
+            "請重寫剛才那段，同樣內容與關鍵事實都要保留，但整體壓到 200-280 字。"
+            "只刪修飾與重複，不要新增技術細節，不要解釋規則。"
+        )
+    return (
+        "Rewrite the same scene with the same key facts, but keep the total response under 170 words. "
+        "Cut ornament and repetition only. Do not add technical detail or mention the rule."
+    )
+
+
+def _with_story_length_guard(
+    system_prompt: str,
+    messages: list[dict],
+    locale: str | None,
+) -> tuple[str, dict]:
+    text, debug = story_response(system_prompt, messages)
+    if _story_response_unavailable(text, debug) or not _story_too_long(text, locale):
+        return text, debug
+
+    rewrite_messages = list(messages) + [{"role": "user", "content": _length_rewrite_note(locale)}]
+    rewritten_text, rewritten_debug = story_response(system_prompt, rewrite_messages)
+    if _story_response_unavailable(rewritten_text, rewritten_debug):
+        combined = dict(debug)
+        combined["length_guard"] = {
+            "triggered": True,
+            "initial_metric": _story_length_metric(text, locale),
+            "limit": _story_length_limit(locale),
+            "rewrite_unavailable": True,
+        }
+        return text, combined
+
+    initial_metric = _story_length_metric(text, locale)
+    rewritten_metric = _story_length_metric(rewritten_text, locale)
+    preferred_text = rewritten_text if rewritten_metric <= initial_metric else text
+    preferred_debug = rewritten_debug if rewritten_metric <= initial_metric else debug
+    combined = dict(preferred_debug)
+    combined["length_guard"] = {
+        "triggered": True,
+        "initial_metric": initial_metric,
+        "rewritten_metric": rewritten_metric,
+        "limit": _story_length_limit(locale),
+        "accepted_rewrite": preferred_text == rewritten_text,
+    }
+    combined["length_guard_attempts"] = [
+        {"kind": "initial", "metric": initial_metric, "debug": debug},
+        {"kind": "rewrite", "metric": rewritten_metric, "debug": rewritten_debug},
+    ]
+    return preferred_text, combined
 
 
 def _perf_review_scene(locale: str | None) -> dict:
@@ -1970,9 +2049,10 @@ def _build_scene_opening(
         memories=memories,
     )
     opening_messages = [{"role": "user", "content": _scene_start_marker(locale)}]
-    opening_text, story_debug = story_response(
+    opening_text, story_debug = _with_story_length_guard(
         system_prompt,
         opening_messages,
+        locale,
     )
     is_conversational = scene_config["scene"].get("conversational", False)
     show_options = _should_show_options(scene_config["kind"], 1, is_conversational)
@@ -2930,7 +3010,7 @@ def _handle_pip_turn(
         rounds=session.scene_round_limit + 1,
         memories=memories,
     )
-    ai_text, story_debug = story_response(system_prompt, messages)
+    ai_text, story_debug = _with_story_length_guard(system_prompt, messages, locale)
     if _story_response_unavailable(ai_text, story_debug):
         db.rollback()
         raise HTTPException(status_code=503, detail=_ai_retry_later_detail(locale))
@@ -3481,7 +3561,7 @@ def take_turn(
         rounds=session.scene_round_limit + 1,
         memories=memories,
     )
-    ai_text, story_debug = story_response(system_prompt, messages)
+    ai_text, story_debug = _with_story_length_guard(system_prompt, messages, locale)
     if _story_response_unavailable(ai_text, story_debug):
         db.rollback()
         raise HTTPException(status_code=503, detail=_ai_retry_later_detail(locale))

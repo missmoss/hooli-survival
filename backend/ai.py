@@ -146,11 +146,22 @@ def _openai_available() -> bool:
 
 
 def _provider_priority() -> list[str]:
+    configured = [
+        token.strip().lower()
+        for token in os.getenv("AI_PROVIDER_PRIORITY", "").split(",")
+        if token.strip()
+    ]
+    if not configured:
+        configured = ["gemini", "anthropic", "openai"]
+
     order: list[str] = []
-    if _client() is not None:
-        order.append("gemini")
-    if _anthropic_available():
-        order.append("anthropic")
+    for provider in configured:
+        if provider == "gemini" and _client() is not None:
+            order.append("gemini")
+        elif provider == "anthropic" and _anthropic_available():
+            order.append("anthropic")
+        elif provider == "openai" and _openai_available():
+            order.append("openai")
     return order
 
 

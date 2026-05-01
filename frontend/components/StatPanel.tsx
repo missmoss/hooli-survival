@@ -17,6 +17,7 @@ type Props = {
     reason: string | null;
     delta: Record<string, number>;
   } | null;
+  className?: string;
 };
 
 const keys = ['tech', 'visibility', 'affinity', 'pip_potential'];
@@ -57,14 +58,14 @@ function CharacterBlock({
   );
 }
 
-export default function StatPanel({ characters, state, latestEval }: Props) {
+export default function StatPanel({ characters, state, latestEval, className = '' }: Props) {
   const { t } = useI18n();
   if (!state || !characters) {
     return null;
   }
 
   return (
-    <aside className="min-h-0 overflow-y-auto rounded-2xl border border-black/30 bg-white/85 p-3 shadow-frame backdrop-blur-sm">
+    <aside className={`min-h-0 overflow-y-auto rounded-xl border border-black/30 bg-white/85 p-3 shadow-frame backdrop-blur-sm sm:rounded-2xl ${className}`}>
       <div className="space-y-4">
         <div className="space-y-3">
           <CharacterBlock label={t('statPanel.manager')} icon="👤" character={characters.manager} />

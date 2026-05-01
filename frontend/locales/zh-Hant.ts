@@ -1,6 +1,7 @@
 const zhHant = {
   home: {
     tagline: '每個會議都說在對齊方向，但方向每週都會更新。你是 mid-level 工程師，今天開始只做一件事：活下去。',
+    portalEntry: '正在從 portal 進入...',
     playerNameLabel: '你的名字（選填）',
     playerNamePlaceholder: '例如：Claire',
     startGame: '開始本輪工作',
@@ -31,11 +32,30 @@ const zhHant = {
     perf: 'Calibration review 中，正在等 perf 結果...',
     nextScene: '場景結算中，正在準備下一個場景...',
   },
+  summary: {
+    eyebrow: '場景摘要',
+    rating: '評價',
+    continue: '繼續',
+  },
+  panel: {
+    open: 'Team + 狀態',
+    close: '關閉',
+  },
+  mobile: {
+    chooseAction: '選擇行動',
+    teamState: 'Team + 狀態',
+    writeCustom: '自己輸入',
+    backToOptions: '回到選項',
+  },
   game: {
     newScene: '───── 新場景 ─────',
     session: 'session',
     round: 'round',
     restart: '重新開始',
+    portal: 'Game Jam Portal',
+    portalShort: 'Portal',
+    returnPortal: 'Return Portal',
+    returnPortalShort: 'Return',
     chooseInput: '自己輸入',
     freeInput: '本輪為自由輸入',
     freeInputHint: '可直接自由輸入，不需要只選 A / B / C。',

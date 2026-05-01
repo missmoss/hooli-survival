@@ -59,7 +59,10 @@ export default function InputBar({ disabled, onSubmit, onEmptySubmit, placeholde
   const sendDisabled = disabled || submitting;
 
   return (
-    <form onSubmit={onFormSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
+    <form
+      onSubmit={onFormSubmit}
+      className="mt-3 flex flex-col gap-3 border-t border-black/10 bg-[linear-gradient(180deg,rgba(246,246,246,0),rgba(246,246,246,0.92)_20%,rgba(246,246,246,0.98))] pt-3 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] sm:mt-4 sm:flex-row sm:pt-4"
+    >
       <textarea
         ref={inputRef}
         value={value}
@@ -69,7 +72,7 @@ export default function InputBar({ disabled, onSubmit, onEmptySubmit, placeholde
         onKeyDown={onKeyDown}
         disabled={inputDisabled}
         placeholder={placeholder || t('input.placeholder')}
-        className="mono min-h-24 min-w-0 flex-1 resize-none rounded-xl border border-black/30 bg-white px-4 py-3 text-sm text-black outline-none transition focus:border-black"
+        className="mono min-h-20 min-w-0 flex-1 resize-none rounded-xl border border-black/30 bg-white px-4 py-3 text-sm text-black outline-none transition focus:border-black sm:min-h-24"
       />
       <button
         type="submit"

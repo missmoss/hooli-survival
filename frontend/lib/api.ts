@@ -80,6 +80,14 @@ export type TurnResponse = {
   ending?: EndingPayload | null;
 };
 
+export type LatestEval = {
+  scene_type: 'project' | 'event';
+  scene_id: string;
+  rating: 'good' | 'neutral' | 'bad' | string;
+  reason: string | null;
+  delta: Record<string, number>;
+};
+
 export type SessionResponse = {
   session_id: string;
   locale: Locale;
@@ -101,13 +109,7 @@ export type SessionResponse = {
   ending: EndingPayload | null;
   round: number;
   max_rounds: number;
-  latest_eval: {
-    scene_type: 'project' | 'event';
-    scene_id: string;
-    rating: 'good' | 'neutral' | 'bad' | string;
-    reason: string | null;
-    delta: Record<string, number>;
-  } | null;
+  latest_eval: LatestEval | null;
 };
 
 export type NextSceneResponse =
