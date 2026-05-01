@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import './globals.css';
 
 import { I18nProvider } from '@/lib/i18n';
@@ -16,8 +15,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script async src="https://vibejam.cc/2026/widget.js" />
+      </head>
       <body>
-        <Script src="https://vibejam.cc/2026/widget.js" strategy="afterInteractive" />
         <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
