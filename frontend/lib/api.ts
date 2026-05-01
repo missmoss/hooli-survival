@@ -1,6 +1,28 @@
 import { getBrowserId } from '@/lib/browser-id';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const DIRECT_API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const PROXY_API_BASE = '/api/proxy';
+
+function shouldUseProxy(): boolean {
+  if (process.env.NEXT_PUBLIC_USE_API_PROXY === '1') {
+    return true;
+  }
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return new URLSearchParams(window.location.search).get('proxy') === 'true';
+}
+
+function apiBase(): string {
+  return shouldUseProxy() ? PROXY_API_BASE : DIRECT_API_BASE;
+}
+
+function sessionHeaders(): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    'X-Office-Sim-Browser-Id': getBrowserId(),
+  };
+}
 
 type ApiError = { detail?: string };
 export type Locale = 'en' | 'zh-Hant';
@@ -126,14 +148,10 @@ export type NextSceneResponse =
     };
 
 export async function createSession(playerName?: string, locale?: Locale): Promise<CreateSessionResponse> {
-  const browserId = getBrowserId();
-  const res = await fetch(`${API_BASE}/sessions`, {
+  const res = await fetch(`${apiBase()}/sessions`, {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Office-Sim-Browser-Id': browserId,
-    },
+    headers: sessionHeaders(),
     body: JSON.stringify({
       player_name: (playerName || '').trim() || undefined,
       locale,
@@ -149,14 +167,10 @@ export async function devCreatePerfReviewFixture(
   scenario: DevPerfReviewScenario = 'regular',
   locale?: Locale,
 ): Promise<CreateSessionResponse> {
-  const browserId = getBrowserId();
-  const res = await fetch(`${API_BASE}/dev/sessions/perf-review-fixture`, {
+  const res = await fetch(`${apiBase()}/dev/sessions/perf-review-fixture`, {
     method: 'POST',
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Office-Sim-Browser-Id': browserId,
-    },
+    headers: sessionHeaders(),
     body: JSON.stringify({
       player_name: (playerName || '').trim() || undefined,
       scenario,
@@ -167,29 +181,31 @@ export async function devCreatePerfReviewFixture(
 }
 
 export async function sendTurn(sessionId: string, message: string): Promise<TurnResponse> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/turn`, {
+  const res = await fetch(`${apiBase()}/sessions/${sessionId}/turn`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: sessionHeaders(),
     body: JSON.stringify({ message }),
   });
   return parseJson<TurnResponse>(res);
 }
 
 export async function getSession(sessionId: string): Promise<SessionResponse> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+  const res = await fetch(`${apiBase()}/sessions/${sessionId}`, {
     method: 'GET',
     credentials: 'include',
     cache: 'no-store',
+    headers: { 'X-Office-Sim-Browser-Id': getBrowserId() },
   });
   return parseJson<SessionResponse>(res);
 }
 
 export async function getNextScene(sessionId: string): Promise<NextSceneResponse> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/next-scene`, {
+  const res = await fetch(`${apiBase()}/sessions/${sessionId}/next-scene`, {
     method: 'GET',
     credentials: 'include',
     cache: 'no-store',
+    headers: { 'X-Office-Sim-Browser-Id': getBrowserId() },
   });
   return parseJson<NextSceneResponse>(res);
 }

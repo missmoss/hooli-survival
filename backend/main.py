@@ -809,6 +809,32 @@ def _record_session_debug_event(
     db.add(event)
 
 
+def _record_post_commit_session_readback(
+    request: Request,
+    session_id: str,
+    *,
+    cookie_present: bool,
+) -> None:
+    readback_db = SessionLocal()
+    try:
+        readback = readback_db.get(GameSession, session_id)
+        if readback is None:
+            return
+        _record_session_debug_event(
+            readback_db,
+            request,
+            "db_readback_found",
+            session_id=session_id,
+            requested_session_id=session_id,
+            cookie_session_id=session_id,
+            cookie_present=cookie_present,
+            notes="Game session row was readable after create commit",
+        )
+        readback_db.commit()
+    finally:
+        readback_db.close()
+
+
 def _set_session_cookie(response: Response, session_id: str) -> None:
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -3385,6 +3411,11 @@ def create_session(
         cookie_present=bool(request.cookies.get(SESSION_COOKIE_NAME, "").strip()),
     )
     db.commit()
+    _record_post_commit_session_readback(
+        request,
+        game_session.id,
+        cookie_present=bool(request.cookies.get(SESSION_COOKIE_NAME, "").strip()),
+    )
     _set_session_cookie(response, game_session.id)
 
     return {
@@ -3535,6 +3566,11 @@ def dev_create_perf_review_fixture(
         cookie_present=bool(request.cookies.get(SESSION_COOKIE_NAME, "").strip()),
     )
     db.commit()
+    _record_post_commit_session_readback(
+        request,
+        game_session.id,
+        cookie_present=bool(request.cookies.get(SESSION_COOKIE_NAME, "").strip()),
+    )
     _set_session_cookie(response, game_session.id)
     return {
         "session_id": game_session.id,

@@ -111,12 +111,16 @@ def test_browser_id_and_session_meta_are_persisted(tmp_path, monkeypatch):
             .order_by(db_module.SessionDebugEvent.created_at.asc())
             .all()
         )
-        assert len(events) == 1
+        assert len(events) == 2
         assert events[0].event_type == "session_created"
         assert events[0].requested_session_id == session_id
         assert events[0].cookie_session_id == session_id
         assert events[0].browser_id_header == "br_testclient1234"
         assert events[0].cookie_name == "office_sim_session"
+        assert events[1].event_type == "db_readback_found"
+        assert events[1].requested_session_id == session_id
+        assert events[1].cookie_session_id == session_id
+        assert events[1].notes == "Game session row was readable after create commit"
     finally:
         db.close()
 
@@ -144,7 +148,11 @@ def test_session_routes_require_matching_cookie(tmp_path, monkeypatch):
             .order_by(db_module.SessionDebugEvent.created_at.asc())
             .all()
         )
-        assert [event.event_type for event in events] == ["session_created", "cookie_mismatch"]
+        assert [event.event_type for event in events] == [
+            "session_created",
+            "db_readback_found",
+            "cookie_mismatch",
+        ]
         mismatch = events[-1]
         assert mismatch.session_id == session_id
         assert mismatch.cookie_session_id is None
