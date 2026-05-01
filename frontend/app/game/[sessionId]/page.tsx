@@ -140,7 +140,7 @@ export default function GamePage() {
 
   function restartGame() {
     sessionStorage.removeItem(`hooli:session:${sessionId}`);
-    router.push('/?dev=true');
+    router.push('/');
   }
 
   useEffect(() => {
