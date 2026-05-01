@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { DevPerfReviewScenario, createSession, devCreatePerfReviewFixture } from '@/lib/api';
@@ -13,8 +13,11 @@ export default function HomePageClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState('');
+  const portalInitRef = useRef(false);
 
   const devMode = searchParams.get('dev') === 'true';
+  const portalEntry = searchParams.get('portal') === 'true';
+  const portalUsername = (searchParams.get('username') || '').trim();
 
   function describeRequestError(err: unknown, fallback: string): string {
     if (err instanceof Error && err.message === 'Failed to fetch') {
@@ -23,14 +26,19 @@ export default function HomePageClient() {
     return err instanceof Error ? err.message : fallback;
   }
 
+  function buildGameRoute(sessionId: string): string {
+    const params = new URLSearchParams(searchParams.toString());
+    const query = params.toString();
+    return query ? `/game/${sessionId}?${query}` : `/game/${sessionId}`;
+  }
+
   async function startGame() {
     setLoading(true);
     setError(null);
     try {
       const created = await createSession(playerName, locale);
       sessionStorage.setItem(`hooli:session:${created.session_id}`, JSON.stringify(created));
-      const query = devMode ? '?dev=true' : '';
-      router.push(`/game/${created.session_id}${query}`);
+      router.push(buildGameRoute(created.session_id));
     } catch (err) {
       setError(describeRequestError(err, 'Unable to create session'));
     } finally {
@@ -52,12 +60,46 @@ export default function HomePageClient() {
     }
   }
 
+  useEffect(() => {
+    if (!portalEntry || devMode || portalInitRef.current) {
+      return;
+    }
+    portalInitRef.current = true;
+    setLoading(true);
+    setError(null);
+    if (portalUsername) {
+      setPlayerName(portalUsername);
+    }
+
+    void (async () => {
+      try {
+        const created = await createSession(portalUsername || playerName, locale);
+        sessionStorage.setItem(`hooli:session:${created.session_id}`, JSON.stringify(created));
+        router.replace(buildGameRoute(created.session_id));
+      } catch (err) {
+        setError(describeRequestError(err, 'Unable to create portal session'));
+        setLoading(false);
+      }
+    })();
+  }, [devMode, locale, playerName, portalEntry, portalUsername, router, searchParams]);
+
+  if (portalEntry && !error) {
+    return (
+      <main className="mx-auto flex min-h-[100dvh] w-full max-w-5xl items-center px-4 py-8 sm:px-6 sm:py-14">
+        <section className="w-full rounded-[1.75rem] border border-black/30 bg-white/80 p-5 shadow-frame backdrop-blur-sm sm:rounded-3xl sm:p-8 md:p-12">
+          <p className="mono text-xs uppercase tracking-[0.22em] text-black/55">{t('home.portalEntry')}</p>
+          {error ? <p className="mt-4 text-sm text-black/70">{error}</p> : null}
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-6 py-14">
-      <section className="w-full rounded-3xl border border-black/30 bg-white/80 p-8 shadow-frame backdrop-blur-sm md:p-12">
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-5xl items-center px-4 py-8 sm:px-6 sm:py-14">
+      <section className="w-full rounded-[1.75rem] border border-black/30 bg-white/80 p-5 shadow-frame backdrop-blur-sm sm:rounded-3xl sm:p-8 md:p-12">
         <p className="mono text-xs uppercase tracking-[0.22em] text-black/55">Corporate Survival Simulator</p>
-        <h1 className="mt-3 text-5xl font-semibold leading-tight text-black md:text-7xl">Hooli Survival</h1>
-        <p className="mt-5 max-w-2xl text-base text-black/75 md:text-lg">
+        <h1 className="mt-3 text-4xl font-semibold leading-tight text-black sm:text-5xl md:text-7xl">Hooli Survival</h1>
+        <p className="mt-4 max-w-2xl text-sm text-black/75 sm:text-base md:text-lg">
           {t('home.tagline')}
         </p>
 
@@ -98,7 +140,7 @@ export default function HomePageClient() {
           })}
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <button
             onClick={startGame}
             disabled={loading}

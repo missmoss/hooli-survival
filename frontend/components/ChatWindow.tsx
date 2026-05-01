@@ -31,27 +31,34 @@ function generatedByLabel(generatedBy: ChatMessage['generatedBy']): string {
 }
 
 export default function ChatWindow({ messages, assistantTyping = false, showGeneratedBy = false }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const previousMessageCountRef = useRef(0);
 
   useEffect(() => {
-    if (assistantTyping) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const container = containerRef.current;
+    if (!container) {
+      previousMessageCountRef.current = messages.length;
       return;
     }
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage) {
+
+    const isInitialPaint = previousMessageCountRef.current === 0;
+    const hasNewMessages = messages.length > previousMessageCountRef.current;
+    previousMessageCountRef.current = messages.length;
+
+    if (isInitialPaint) {
+      container.scrollTop = 0;
       return;
     }
-    if (lastMessage.role === 'assistant') {
-      messageRefs.current[lastMessage.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
+
+    if (assistantTyping || hasNewMessages) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages]);
+  }, [assistantTyping, messages]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-black/30 bg-white/85 p-4 shadow-frame backdrop-blur-sm">
+    <div ref={containerRef} className="min-h-[16rem] flex-1 overflow-y-auto rounded-xl border border-black/30 bg-white/85 p-3 shadow-frame backdrop-blur-sm sm:rounded-2xl sm:p-4">
       <div className="space-y-4">
         {messages.map((msg) => {
           if (msg.role === 'divider') {
@@ -73,7 +80,7 @@ export default function ChatWindow({ messages, assistantTyping = false, showGene
             >
               <div
                 className={[
-                  'min-w-0 max-w-[85%] rounded-xl border px-4 py-3 text-sm leading-relaxed',
+                  'min-w-0 max-w-[92%] rounded-xl border px-3 py-2.5 text-sm leading-relaxed sm:max-w-[85%] sm:px-4 sm:py-3',
                   isUser
                     ? 'border-black/40 bg-black text-white mono'
                     : 'border-black/20 bg-white text-black',
