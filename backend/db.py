@@ -12,6 +12,13 @@ from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 logger = logging.getLogger(__name__)
 
 
+def _bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
 def _normalize_database_url(raw_url: str) -> str:
     url = (raw_url or "").strip() or "sqlite:///./office_sim.db"
     if url.startswith("postgres://"):
@@ -163,8 +170,17 @@ def prepare_db() -> None:
         logger.info("Preparing SQLite database with create_all/bootstrap migrations.")
         init_db()
         return
-    logger.info("Preparing PostgreSQL database with Alembic migrations.")
-    run_migrations()
+
+    should_run = _bool_env(
+        "OFFICE_SIM_RUN_MIGRATIONS_ON_STARTUP",
+        os.getenv("APP_ENV", "development") != "production",
+    )
+    if should_run:
+        logger.info("Preparing PostgreSQL database with Alembic migrations.")
+        run_migrations()
+        return
+
+    logger.info("Skipping PostgreSQL startup migrations. Expect migrations to run in a pre-deploy command.")
 
 
 def _migrate_game_sessions_columns() -> None:
