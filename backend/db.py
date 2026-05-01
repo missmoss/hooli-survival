@@ -1,11 +1,15 @@
 import os
 import uuid
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
 from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, create_engine, func, text
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship, sessionmaker
+
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_database_url(raw_url: str) -> str:
@@ -141,6 +145,7 @@ def init_db() -> None:
 
 
 def run_migrations() -> None:
+    logger.info("Running Alembic migrations.")
     try:
         from alembic import command
         from alembic.config import Config
@@ -155,8 +160,10 @@ def run_migrations() -> None:
 
 def prepare_db() -> None:
     if DATABASE_URL.startswith("sqlite"):
+        logger.info("Preparing SQLite database with create_all/bootstrap migrations.")
         init_db()
         return
+    logger.info("Preparing PostgreSQL database with Alembic migrations.")
     run_migrations()
 
 

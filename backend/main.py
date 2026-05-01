@@ -1,6 +1,7 @@
 import os
 import random
 import re
+import logging
 from contextlib import asynccontextmanager
 from datetime import date
 from datetime import datetime, timezone
@@ -28,6 +29,9 @@ from events import (
 )
 from prompt_registry import default_player_name, get_prompt_bundle, locale_from_accept_language, normalize_locale
 from state import INITIAL_MID_STATE, apply_state_delta, rating_to_delta
+
+
+logger = logging.getLogger(__name__)
 
 
 def _bool_env(name: str, default: bool) -> bool:
@@ -93,7 +97,11 @@ def _story_response_unavailable(text: str, debug_payload: dict | None) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    prepare_db()
+    try:
+        prepare_db()
+    except Exception:
+        logger.exception("Application startup failed while preparing the database.")
+        raise
     yield
 
 
