@@ -5,6 +5,8 @@ const UPSTREAM_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Cleanup path: once the proxy becomes the permanent transport layer, revisit this file and
+// remove any passthrough/fallback behavior that only exists to keep the old direct path alive.
 function buildUpstreamUrl(pathSegments: string[], search: string): string {
   const path = pathSegments.join('/');
   return `${UPSTREAM_BASE}/${path}${search}`;

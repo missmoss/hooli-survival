@@ -4,13 +4,22 @@ const DIRECT_API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:80
 const PROXY_API_BASE = '/api/proxy';
 
 function shouldUseProxy(): boolean {
+  // Cleanup path: once proxy is fully validated in production, remove the direct API fallback
+  // and this toggle logic so every client always uses the same-site proxy.
+  if (process.env.NEXT_PUBLIC_USE_API_PROXY === '0') {
+    return false;
+  }
   if (process.env.NEXT_PUBLIC_USE_API_PROXY === '1') {
     return true;
   }
   if (typeof window === 'undefined') {
+    return true;
+  }
+  const proxyFlag = new URLSearchParams(window.location.search).get('proxy');
+  if (proxyFlag === 'false') {
     return false;
   }
-  return new URLSearchParams(window.location.search).get('proxy') === 'true';
+  return true;
 }
 
 function apiBase(): string {
