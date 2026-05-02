@@ -520,18 +520,6 @@ def _story_too_long(text: str, locale: str | None) -> bool:
     return _story_length_metric(text, locale) > _story_length_limit(locale)
 
 
-def _length_rewrite_note(locale: str | None) -> str:
-    if _is_zh(locale):
-        return (
-            "請重寫剛才那段，同樣內容與關鍵事實都要保留，但整體壓到 200-280 字。"
-            "只刪修飾與重複，不要新增技術細節，不要解釋規則。"
-        )
-    return (
-        "Rewrite the same scene with the same key facts, but keep the total response under 170 words. "
-        "Cut ornament and repetition only. Do not add technical detail or mention the rule."
-    )
-
-
 def _with_story_length_guard(
     system_prompt: str,
     messages: list[dict],
@@ -541,8 +529,7 @@ def _with_story_length_guard(
     if _story_response_unavailable(text, debug) or not _story_too_long(text, locale):
         return text, debug
 
-    rewrite_messages = list(messages) + [{"role": "user", "content": _length_rewrite_note(locale)}]
-    rewritten_text, rewritten_debug = story_response(system_prompt, rewrite_messages)
+    rewritten_text, rewritten_debug = story_response(system_prompt, messages)
     if _story_response_unavailable(rewritten_text, rewritten_debug):
         combined = dict(debug)
         combined["length_guard"] = {

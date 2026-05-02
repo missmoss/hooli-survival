@@ -33,10 +33,25 @@ OPTION_LINE_RE = re.compile(r"^\s*(?:[*_`]\s*)*([ABC])(?:\s*[*_`])*\s*[\.\)）�
 SENTENCE_END_RE = re.compile(r"[。！？?!.」』\"]\s*$")
 SUSPICIOUS_TRAILING_RE = re.compile(r"[「『（([{：:，、…-]\s*$")
 COMPLETE_BOUNDARY_RE = re.compile(r"[。！？?!.](?:[」』\"])?")
+CONTEXT_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{2,}|[\u4e00-\u9fff]+")
 PLACEHOLDER_RE = re.compile(
     r"\[(?:[^\]\n]{0,80}(?:請在此處|待填|TODO|姓名|名字|接續|placeholder)[^\]\n]*)\]"
 )
 LEAKED_RETRY_NOTE_RE = re.compile(r"(我上一版輸出在句中中斷或格式不完整|my previous output was cut off or malformed)", re.IGNORECASE)
+CONTEXT_STOPWORDS = {
+    "這個",
+    "那個",
+    "我們",
+    "你們",
+    "他們",
+    "目前",
+    "問題",
+    "服務",
+    "ticket",
+    "tickets",
+    "service",
+    "issue",
+}
 
 
 def _has_balanced_story_delimiters(text: str) -> bool:
@@ -483,6 +498,57 @@ def _is_usable_trimmed_story(text: str) -> bool:
     return sentence_count >= 2 and len(stripped) >= 220
 
 
+def _story_context_tokens(text: str) -> set[str]:
+    tokens: set[str] = set()
+    for match in CONTEXT_TOKEN_RE.finditer((text or "").strip()):
+        value = match.group(0)
+        if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{2,}", value):
+            tokens.add(value.lower())
+            continue
+        if re.fullmatch(r"[\u4e00-\u9fff]+", value):
+            han = value
+            for size in range(2, min(4, len(han)) + 1):
+                for index in range(0, len(han) - size + 1):
+                    tokens.add(han[index : index + size])
+    return {token for token in tokens if token not in CONTEXT_STOPWORDS}
+
+
+def _latest_story_user_message(messages: list[dict]) -> str:
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            return str(message.get("content") or "").strip()
+    return ""
+
+
+def _latest_story_assistant_message(messages: list[dict]) -> str:
+    for message in reversed(messages):
+        if message.get("role") == "assistant":
+            return str(message.get("content") or "").strip()
+    return ""
+
+
+def _token_overlap_ratio(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / max(1, min(len(left), len(right)))
+
+
+def _trimmed_story_matches_turn_context(text: str, messages: list[dict]) -> bool:
+    latest_user = _latest_story_user_message(messages)
+    if not latest_user:
+        return True
+    if latest_user.startswith("【場景開始】") or latest_user.startswith("[SCENE START]"):
+        return True
+
+    user_tokens = _story_context_tokens(latest_user)
+    candidate_tokens = _story_context_tokens(text)
+    if len(user_tokens) >= 2:
+        return bool(user_tokens & candidate_tokens)
+
+    previous_assistant_tokens = _story_context_tokens(_latest_story_assistant_message(messages))
+    return _token_overlap_ratio(candidate_tokens, previous_assistant_tokens) < 0.6
+
+
 def _parse_eval_json(text: str) -> tuple[str, str] | None:
     raw = _strip_code_fence(text)
     if not raw:
@@ -633,10 +699,6 @@ def _story_response_openai(system_prompt: str, messages: list[dict]) -> tuple[st
     if not _openai_available():
         return STORY_FALLBACK_TEXT, {"source": "no_openai_client", "attempts": [], "fallback": True}
 
-    retry_note = (
-        "上一版回覆不可用。請整段重寫，只輸出場景正文；"
-        "不要提到重試、規則、prompt、placeholder 或任何待填字樣。"
-    )
     best_partial = ""
     attempts: list[dict[str, Any]] = []
     base_messages = list(messages)
@@ -670,7 +732,6 @@ def _story_response_openai(system_prompt: str, messages: list[dict]) -> tuple[st
                 )
                 if retryable:
                     time.sleep(0.8 * (attempt + 1))
-                model_messages = model_messages + [{"role": "user", "content": retry_note}]
                 continue
 
             text = _openai_text(payload)
@@ -690,12 +751,11 @@ def _story_response_openai(system_prompt: str, messages: list[dict]) -> tuple[st
             trimmed = _trim_to_complete_story(text)
             if len(trimmed) > len(best_partial):
                 best_partial = trimmed
-            model_messages = model_messages + [{"role": "user", "content": retry_note}]
 
         if model_index < len(_openai_models()) - 1:
             time.sleep(1.0)
 
-    if best_partial:
+    if best_partial and _trimmed_story_matches_turn_context(best_partial, messages):
         return best_partial, {
             "provider": "openai",
             "source": "trimmed_partial",
@@ -704,10 +764,11 @@ def _story_response_openai(system_prompt: str, messages: list[dict]) -> tuple[st
         }
     return STORY_FALLBACK_TEXT, {
         "provider": "openai",
-        "source": "fallback_text",
+        "source": "rejected_trimmed_partial" if best_partial else "fallback_text",
         "models": _openai_models(),
         "attempts": attempts,
         "fallback": True,
+        "trimmed_partial_rejected": bool(best_partial),
     }
 
 
@@ -715,10 +776,6 @@ def _story_response_claude(system_prompt: str, messages: list[dict]) -> tuple[st
     if not _anthropic_available():
         return STORY_FALLBACK_TEXT, {"source": "no_anthropic_client", "attempts": [], "fallback": True}
 
-    retry_note = (
-        "上一版回覆不可用。請整段重寫，只輸出場景正文；"
-        "不要提到重試、規則、prompt、placeholder 或任何待填字樣。"
-    )
     best_partial = ""
     attempts: list[dict[str, Any]] = []
     base_messages = list(messages)
@@ -750,7 +807,6 @@ def _story_response_claude(system_prompt: str, messages: list[dict]) -> tuple[st
                 )
                 if retryable:
                     time.sleep(0.8 * (attempt + 1))
-                model_messages = model_messages + [{"role": "user", "content": retry_note}]
                 continue
 
             text = _anthropic_text(payload)
@@ -770,12 +826,11 @@ def _story_response_claude(system_prompt: str, messages: list[dict]) -> tuple[st
             trimmed = _trim_to_complete_story(text)
             if len(trimmed) > len(best_partial):
                 best_partial = trimmed
-            model_messages = model_messages + [{"role": "user", "content": retry_note}]
 
         if model_index < len(_anthropic_models()) - 1:
             time.sleep(1.0)
 
-    if best_partial:
+    if best_partial and _trimmed_story_matches_turn_context(best_partial, messages):
         return best_partial, {
             "provider": "anthropic",
             "source": "trimmed_partial",
@@ -784,10 +839,11 @@ def _story_response_claude(system_prompt: str, messages: list[dict]) -> tuple[st
         }
     return STORY_FALLBACK_TEXT, {
         "provider": "anthropic",
-        "source": "fallback_text",
+        "source": "rejected_trimmed_partial" if best_partial else "fallback_text",
         "models": _anthropic_models(),
         "attempts": attempts,
         "fallback": True,
+        "trimmed_partial_rejected": bool(best_partial),
     }
 
 
@@ -797,10 +853,6 @@ def _story_response_gemini(system_prompt: str, messages: list[dict]) -> tuple[st
         return STORY_FALLBACK_TEXT, {"source": "no_client", "attempts": [], "fallback": True}
 
     contents = _to_contents(messages)
-    retry_note = (
-        "上一版回覆不可用。請整段重寫，只輸出場景正文；"
-        "不要提到重試、規則、prompt、placeholder 或任何待填字樣。"
-    )
     best_partial = ""
     attempts: list[dict[str, Any]] = []
 
@@ -833,7 +885,6 @@ def _story_response_gemini(system_prompt: str, messages: list[dict]) -> tuple[st
                 )
                 if retryable:
                     time.sleep(0.6 * (attempt + 1))
-                model_contents = model_contents + [{"role": "user", "parts": [{"text": retry_note}]}]
                 continue
 
             text = _extract_response_text(response)
@@ -856,13 +907,12 @@ def _story_response_gemini(system_prompt: str, messages: list[dict]) -> tuple[st
             trimmed = _trim_to_complete_story(text)
             if len(trimmed) > len(best_partial):
                 best_partial = trimmed
-            model_contents = model_contents + [{"role": "user", "parts": [{"text": retry_note}]}]
 
         contents = list(contents)
         if model_index < len(story_models) - 1:
             time.sleep(0.8)
 
-    if best_partial:
+    if best_partial and _trimmed_story_matches_turn_context(best_partial, messages):
         return best_partial, {
             "provider": "gemini",
             "source": "trimmed_partial",
@@ -871,10 +921,11 @@ def _story_response_gemini(system_prompt: str, messages: list[dict]) -> tuple[st
         }
     return STORY_FALLBACK_TEXT, {
         "provider": "gemini",
-        "source": "fallback_text",
+        "source": "rejected_trimmed_partial" if best_partial else "fallback_text",
         "models": story_models,
         "attempts": attempts,
         "fallback": True,
+        "trimmed_partial_rejected": bool(best_partial),
     }
 
 
