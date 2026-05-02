@@ -46,6 +46,25 @@ def test_trimmed_partial_accepts_turn_response_that_uses_user_context():
     assert ai._trimmed_story_matches_turn_context(trimmed, messages) is True
 
 
+def test_trimmed_partial_rejects_prefix_duplicate_even_with_user_context():
+    previous_assistant = (
+        "你收到 PM 指派的中型專案。雖然不是完全沒有能寫進績效報告的亮點，但離讓你升等還是差了一截。"
+        "不過，這個客戶可是異常難纏，需求從 A 做到 B，再從 B 做到 C，如滾雪球般不斷膨脹。"
+        "眼看這個專案就要吞噬你今年的所有時間，你很可能因此錯過那些真正足以證明能力、幫你升等的「大案子」。"
+    )
+    messages = [
+        {"role": "assistant", "content": previous_assistant},
+        {"role": "user", "content": "召集相關關係人，強硬地重新界定專案範圍與風險。"},
+    ]
+    trimmed = (
+        previous_assistant
+        + "你決定召集相關關係人，強硬地重新界定專案範圍與風險。"
+        + "你迅速安排了一場專案對齊會議，試圖將失控的需求拉回正軌。"
+    )
+
+    assert ai._trimmed_story_matches_turn_context(trimmed, messages) is False
+
+
 def test_length_guard_retries_with_same_messages(app_modules):
     main = app_modules["main"]
     calls: list[list[dict]] = []

@@ -1,3 +1,4 @@
+import difflib
 import json
 import os
 import re
@@ -533,12 +534,31 @@ def _token_overlap_ratio(left: set[str], right: set[str]) -> float:
     return len(left & right) / max(1, min(len(left), len(right)))
 
 
+def _normalized_story_text(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip())
+
+
+def _previous_assistant_prefix_duplicate_ratio(text: str, messages: list[dict]) -> float:
+    previous_assistant = _normalized_story_text(_latest_story_assistant_message(messages))
+    candidate = _normalized_story_text(text)
+    if not previous_assistant or not candidate:
+        return 0.0
+
+    candidate_prefix = candidate[: len(previous_assistant)]
+    if not candidate_prefix:
+        return 0.0
+    return difflib.SequenceMatcher(a=previous_assistant, b=candidate_prefix).ratio()
+
+
 def _trimmed_story_matches_turn_context(text: str, messages: list[dict]) -> bool:
     latest_user = _latest_story_user_message(messages)
     if not latest_user:
         return True
     if latest_user.startswith("【場景開始】") or latest_user.startswith("[SCENE START]"):
         return True
+
+    if _previous_assistant_prefix_duplicate_ratio(text, messages) >= 0.9:
+        return False
 
     user_tokens = _story_context_tokens(latest_user)
     candidate_tokens = _story_context_tokens(text)
