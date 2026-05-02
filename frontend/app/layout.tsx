@@ -2,10 +2,16 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 import { I18nProvider } from '@/lib/i18n';
+import SiteLinksDock from '@/components/SiteLinksDock';
 
 export const metadata: Metadata = {
   title: 'Hooli Survival',
-  description: 'Corporate survival simulator',
+  description: 'Corporate survival simulator. Every meeting says it is aligning direction, and the direction still changes every week.',
+  openGraph: {
+    title: 'Hooli Survival',
+    description: 'Corporate survival simulator. Every meeting says it is aligning direction, and the direction still changes every week.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -20,6 +26,7 @@ export default function RootLayout({
       </head>
       <body>
         <I18nProvider>{children}</I18nProvider>
+        <SiteLinksDock />
       </body>
     </html>
   );
