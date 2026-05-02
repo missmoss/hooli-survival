@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-
 import { type EndingPayload } from '@/lib/api';
-import { buildEndingShareText, resolveEndingPayload } from '@/lib/ending';
+import { SITE_URL } from '@/lib/config';
+import { buildEndingShareUrls, resolveEndingPayload } from '@/lib/ending';
 import { useI18n } from '@/lib/i18n';
 
 const BUILD_POST_URL = 'https://clairetsao.substack.com/p/building-hooli-survival-software?r=w4jh';
@@ -43,32 +42,11 @@ function statLabel(locale: string, key: (typeof STAT_KEYS)[number]): string {
 export default function EndingView({ ending, stats, onRestart }: Props) {
   const { locale, t } = useI18n();
   const resolved = resolveEndingPayload(ending);
-  const [shareFeedback, setShareFeedback] = useState('');
   const snapshot = Object.keys(resolved.end_state.stats_snapshot || {}).length > 0
     ? resolved.end_state.stats_snapshot
     : stats || {};
   const hasStats = STAT_KEYS.some((key) => typeof snapshot[key] === 'number');
-
-  async function handleShare() {
-    const url = typeof window !== 'undefined' ? new URL('/', window.location.origin).toString() : '';
-    const text = buildEndingShareText(resolved, locale, url);
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({
-          title: resolved.end_state.headline,
-          text,
-          url,
-        });
-      } else if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        throw new Error('share unavailable');
-      }
-      setShareFeedback(t('game.ending.copied'));
-    } catch {
-      setShareFeedback(t('game.ending.shareFailed'));
-    }
-  }
+  const shareUrls = buildEndingShareUrls(resolved, locale, SITE_URL);
 
   return (
     <section className={`relative mt-3 overflow-hidden rounded-[1.5rem] border p-4 shadow-frame sm:mt-4 sm:rounded-[1.75rem] sm:p-5 ${resolved.containerClassName}`}>
@@ -112,14 +90,6 @@ export default function EndingView({ ending, stats, onRestart }: Props) {
               {t('game.ending.actions.restart')}
             </button>
           ) : null}
-          {resolved.actions.share ? (
-            <button
-              onClick={() => void handleShare()}
-              className="mono rounded-md border border-black/60 bg-white/70 px-3 py-2 text-xs text-black transition hover:bg-black hover:text-white"
-            >
-              {t('game.ending.actions.share')}
-            </button>
-          ) : null}
           <a
             href={BUILD_POST_URL}
             target="_blank"
@@ -137,7 +107,30 @@ export default function EndingView({ ending, stats, onRestart }: Props) {
             {t('game.ending.actions.viewGithub')}
           </a>
         </div>
-        {shareFeedback ? <p className="mt-2 text-xs text-black/58 mono">{shareFeedback}</p> : null}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="mono text-[11px] text-black/38">{t('summary.share')}</span>
+          {[
+            { href: shareUrls.x, domain: 'x.com', label: 'X' },
+            { href: shareUrls.threads, domain: 'threads.net', label: 'Threads' },
+            { href: shareUrls.facebook, domain: 'facebook.com', label: 'Facebook' },
+          ].map(({ href, domain, label }) => (
+            <a
+              key={domain}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              title={label}
+              className="flex h-6 w-6 items-center justify-center rounded-md border border-black/15 bg-white/70 opacity-60 transition hover:opacity-100"
+            >
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                width={14}
+                height={14}
+                alt={label}
+              />
+            </a>
+          ))}
+        </div>
 
         <div className="mt-5 rounded-[1.25rem] border border-black/10 bg-white/65 p-3.5 sm:rounded-[1.4rem] sm:p-4">
           <div className="mono text-[11px] tracking-[0.16em] text-black/55">{t('game.ending.shareTitle')}</div>

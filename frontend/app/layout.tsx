@@ -5,6 +5,7 @@ import { I18nProvider } from '@/lib/i18n';
 import SiteLinksDock from '@/components/SiteLinksDock';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://hooli-survival.vercel.app'),
   title: 'Hooli Survival',
   description: 'Corporate survival simulator. Every meeting says it is aligning direction, and the direction still changes every week.',
   openGraph: {

@@ -36,6 +36,7 @@ const en = {
     eyebrow: 'Scene Summary',
     rating: 'rating',
     continue: 'Continue',
+    share: 'Share:',
   },
   panel: {
     open: 'Team + Stats',

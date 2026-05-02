@@ -36,6 +36,7 @@ const zhHant = {
     eyebrow: '場景摘要',
     rating: '評價',
     continue: '繼續',
+    share: '分享：',
   },
   panel: {
     open: 'Team + 狀態',

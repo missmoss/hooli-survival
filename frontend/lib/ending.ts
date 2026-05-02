@@ -94,6 +94,28 @@ function _hookPool(kind: EndingKind, locale: Locale, context: string): string[] 
   ];
 }
 
+export function buildEndingShareUrls(ending: ResolvedEnding, locale: Locale, homepageUrl: string): { x: string; threads: string; facebook: string } {
+  const context = [
+    ending.end_state.top_case_label,
+    ending.end_state.top_case_summary,
+    ending.end_state.headline,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const hooks = _hookPool(ending.kind, locale, context);
+  const hook = hooks[_hookSeed(context || ending.kind) % hooks.length];
+  const callToAction = 'Come play Hooli Survival!';
+
+  const xText = hook + '\n' + callToAction;
+  const threadsText = hook + '\n' + callToAction + '\n' + homepageUrl;
+
+  return {
+    x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(xText)}&url=${encodeURIComponent(homepageUrl)}`,
+    threads: `https://www.threads.net/intent/post?text=${encodeURIComponent(threadsText)}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(homepageUrl)}`,
+  };
+}
+
 export function buildEndingShareText(ending: ResolvedEnding, locale: Locale, homepageUrl: string): string {
   const context = [
     ending.end_state.top_case_label,
