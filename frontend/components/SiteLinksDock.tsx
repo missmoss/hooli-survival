@@ -47,7 +47,7 @@ function LinkButton({
 
 export default function SiteLinksDock() {
   return (
-    <div className="fixed left-3 z-20 flex items-center gap-2 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] md:bottom-16">
+    <div className="fixed left-3 z-20 flex items-center gap-2 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] md:bottom-4">
       <LinkButton href={GITHUB_URL} label="GitHub" className="border-black/85 bg-black text-white hover:bg-white hover:text-black">
         <GitHubIcon />
       </LinkButton>
