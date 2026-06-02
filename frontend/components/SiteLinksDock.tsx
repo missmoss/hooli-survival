@@ -1,3 +1,7 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
 const GITHUB_URL = 'https://github.com/missmoss/hooli-survival';
 const SUBSTACK_URL = 'https://clairetsao.substack.com/p/building-hooli-survival-software?r=w4jh';
 
@@ -46,12 +50,41 @@ function LinkButton({
 }
 
 export default function SiteLinksDock() {
+  const [editorialTheme, setEditorialTheme] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const syncTheme = () => setEditorialTheme(document.documentElement.dataset.uiTheme === 'editorial');
+    syncTheme();
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-ui-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="fixed left-3 z-20 flex items-center gap-2 bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] md:bottom-4">
-      <LinkButton href={GITHUB_URL} label="GitHub" className="border-black/85 bg-black text-white hover:bg-white hover:text-black">
+      <LinkButton
+        href={GITHUB_URL}
+        label="GitHub"
+        className={
+          editorialTheme
+            ? 'border-slate-300 bg-white/90 text-slate-700 shadow-[0_16px_30px_rgba(15,23,42,0.08)] hover:border-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            : 'border-black/85 bg-black text-white hover:bg-white hover:text-black'
+        }
+      >
         <GitHubIcon />
       </LinkButton>
-      <LinkButton href={SUBSTACK_URL} label="Substack" className="border-[#ff6719]/60 bg-[#ff6719] text-white hover:bg-white hover:text-[#ff6719]">
+      <LinkButton
+        href={SUBSTACK_URL}
+        label="Substack"
+        className={
+          editorialTheme
+            ? 'border-[#ff6719]/35 bg-[#ff6719] text-white shadow-[0_16px_30px_rgba(255,103,25,0.18)] hover:border-[#ff6719] hover:bg-[#ff7a36] hover:text-white'
+            : 'border-[#ff6719]/60 bg-[#ff6719] text-white hover:bg-white hover:text-[#ff6719]'
+        }
+      >
         <SubstackIcon />
       </LinkButton>
     </div>

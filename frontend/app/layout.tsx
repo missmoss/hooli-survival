@@ -22,9 +22,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <script async src="https://vibejam.cc/2026/widget.js" />
-      </head>
       <body>
         <I18nProvider>{children}</I18nProvider>
         <SiteLinksDock />

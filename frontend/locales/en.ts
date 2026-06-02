@@ -1,7 +1,6 @@
 const en = {
   home: {
     tagline: 'Every meeting says it is aligning direction, and the direction still changes every week. You are a mid-level engineer. Starting today, your job is simple: survive.',
-    portalEntry: 'Entering from portal...',
     playerNameLabel: 'Your name (optional)',
     playerNamePlaceholder: 'For example: Claire',
     startGame: 'Start',
@@ -49,14 +48,10 @@ const en = {
     backToOptions: 'Back to options',
   },
   game: {
-    newScene: '───── New Scene ─────',
+    newScene: 'New Scene',
     session: 'session',
     round: 'round',
     restart: 'Restart',
-    portal: 'Game Jam Portal',
-    portalShort: 'Portal',
-    returnPortal: 'Return Portal',
-    returnPortalShort: 'Return',
     chooseInput: 'Type your own response',
     freeInput: 'This round is freeform',
     freeInputHint: 'You can type freely. You do not have to choose only A / B / C.',

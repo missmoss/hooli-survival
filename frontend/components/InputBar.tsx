@@ -10,9 +10,19 @@ type Props = {
   onEmptySubmit?: () => Promise<void>;
   placeholder?: string;
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  theme?: 'default' | 'editorial';
 };
 
-export default function InputBar({ disabled, onSubmit, onEmptySubmit, placeholder, inputRef }: Props) {
+function PaperPlaneIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-[1.8]">
+      <path d="M21 3L10 14" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 3L14 21L10 14L3 10L21 3Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export default function InputBar({ disabled, onSubmit, onEmptySubmit, placeholder, inputRef, theme = 'default' }: Props) {
   const { t } = useI18n();
   const [value, setValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +71,13 @@ export default function InputBar({ disabled, onSubmit, onEmptySubmit, placeholde
   return (
     <form
       onSubmit={onFormSubmit}
-      className="mt-3 flex flex-col gap-3 border-t border-black/10 bg-[linear-gradient(180deg,rgba(246,246,246,0),rgba(246,246,246,0.92)_20%,rgba(246,246,246,0.98))] pt-3 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] sm:mt-4 sm:flex-row sm:pt-4"
+      className={[
+        'mt-3 flex flex-col gap-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] sm:mt-4 sm:pt-4',
+        theme === 'editorial'
+          ? 'bg-transparent'
+          : 'border-t border-black/10 bg-[linear-gradient(180deg,rgba(246,246,246,0),rgba(246,246,246,0.92)_20%,rgba(246,246,246,0.98))] sm:flex-row',
+        theme === 'editorial' ? 'sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-stretch' : '',
+      ].join(' ')}
     >
       <textarea
         ref={inputRef}
@@ -72,13 +88,24 @@ export default function InputBar({ disabled, onSubmit, onEmptySubmit, placeholde
         onKeyDown={onKeyDown}
         disabled={inputDisabled}
         placeholder={placeholder || t('input.placeholder')}
-        className="mono min-h-20 min-w-0 flex-1 resize-none rounded-xl border border-black/30 bg-white px-4 py-3 text-sm text-black outline-none transition focus:border-black sm:min-h-24"
+        className={[
+          'mono min-h-[4.25rem] min-w-0 resize-none rounded-[0.58rem] px-3.5 py-3 text-[13px] outline-none transition sm:min-h-[4.5rem]',
+          theme === 'editorial'
+            ? 'flex-1 border border-slate-300/90 bg-white text-slate-950 shadow-none focus:border-slate-400'
+            : 'flex-1 border border-black/30 bg-white text-black focus:border-black',
+        ].join(' ')}
       />
       <button
         type="submit"
         disabled={sendDisabled}
-        className="h-12 w-full shrink-0 rounded-xl border border-black bg-black px-3 py-2 text-sm text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40 sm:h-24 sm:w-28"
+        className={[
+          'shrink-0 rounded-[0.58rem] px-3 py-2 text-[12px] transition disabled:cursor-not-allowed',
+          theme === 'editorial'
+            ? 'flex items-center justify-center gap-2 border border-blue-700 bg-blue-700 text-white shadow-[0_10px_22px_rgba(29,78,216,0.18)] hover:bg-blue-800 disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400 sm:h-auto sm:w-[92px]'
+            : 'h-12 w-full border border-black bg-black text-white hover:bg-white hover:text-black disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40 sm:h-24 sm:w-28',
+        ].join(' ')}
       >
+        {theme === 'editorial' ? <PaperPlaneIcon /> : null}
         {t('input.submit')}
       </button>
     </form>
