@@ -33,7 +33,6 @@ export default function GamePage() {
   const params = useParams<{ sessionId: string }>();
   const sessionId = params.sessionId;
   const devMode = searchParams.get('dev') === 'true';
-  const editorialTheme = searchParams.get('theme') === 'editorial';
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [options, setOptions] = useState<StoryOption[]>([]);
@@ -250,19 +249,6 @@ export default function GamePage() {
     }
   }, [mobileComposerOpen]);
 
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-    const nextTheme = editorialTheme ? 'editorial' : 'default';
-    document.documentElement.dataset.uiTheme = nextTheme;
-    document.body.dataset.uiTheme = nextTheme;
-    return () => {
-      document.documentElement.dataset.uiTheme = 'default';
-      document.body.dataset.uiTheme = 'default';
-    };
-  }, [editorialTheme]);
-
   async function submitTurn(input: string, displayText?: string) {
     if (submitting || settling || status !== 'active') {
       return;
@@ -375,31 +361,26 @@ export default function GamePage() {
       ? submitPerfFramingSelectionFromMobile
       : undefined;
   const endingMode = status === 'ended';
-  const theme = editorialTheme ? 'editorial' : 'default';
+  const desktopOptionBaseClass = 'min-w-0 break-words rounded-none border-x-0 border-t-0 border-b bg-transparent px-0 text-left text-[12px] leading-[1.45] transition disabled:cursor-not-allowed';
+  const desktopSelectedOptionClass = 'border-blue-700 text-blue-700 shadow-none';
+  const desktopUnselectedOptionClass = 'border-slate-200 text-slate-800 shadow-none hover:border-slate-400 hover:text-slate-950 disabled:border-slate-100 disabled:text-slate-400';
+  const desktopHintButtonClass = 'rounded-none border-0 bg-transparent px-0 text-left text-[12px] text-slate-500 transition hover:text-slate-800 disabled:cursor-not-allowed disabled:text-slate-300';
+  const submitButtonClass = 'rounded-[0.58rem] border border-blue-700 bg-blue-700 px-3 py-2 text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400';
+  const mobileOptionClass = 'min-w-0 break-words rounded-none border-x-0 border-t-0 border-b bg-transparent px-0 py-3 text-left text-sm transition disabled:cursor-not-allowed';
+  const mobileHintButtonClass = 'rounded-none border-0 bg-transparent px-0 py-2 text-left text-sm text-slate-500 transition hover:text-slate-800 disabled:cursor-not-allowed disabled:text-slate-300';
 
   return (
     <main
       className={[
-        `mx-auto flex w-full ${endingMode ? 'max-w-5xl' : 'max-w-7xl'} flex-col px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6`,
-        endingMode
-          ? 'min-h-[100dvh] overflow-y-auto'
-          : 'h-[100dvh] min-h-[100dvh] overflow-hidden',
-        editorialTheme ? 'text-slate-900' : '',
+        `mx-auto flex w-full ${endingMode ? 'max-w-5xl' : 'max-w-7xl'} flex-col px-3 py-3 text-slate-900 sm:px-4 sm:py-4 md:px-6 md:py-6`,
+        endingMode ? 'min-h-[100dvh] overflow-y-auto' : 'h-[100dvh] min-h-[100dvh] overflow-hidden',
       ].join(' ')}
     >
-      <div
-        className={[
-          'mb-3 px-1 py-1 sm:mb-4',
-          editorialTheme
-            ? 'border border-transparent bg-transparent shadow-none'
-            : '',
-        ].join(' ')}
-      >
-      <div className={['flex flex-wrap items-center justify-between gap-3', editorialTheme ? 'md:grid md:grid-cols-[minmax(0,1fr)_272px] md:items-start' : ''].join(' ')}>
-        <div className={editorialTheme ? 'min-w-0 space-y-2' : 'min-w-0'}>
-          <h1 className={['text-xl font-semibold', editorialTheme ? 'text-slate-950' : 'text-black'].join(' ')}>Hooli Survival</h1>
-          {!endingMode ? (
-            editorialTheme ? (
+      <div className="mb-3 px-1 py-1 sm:mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 md:grid md:grid-cols-[minmax(0,1fr)_272px] md:items-start">
+          <div className="min-w-0 space-y-2">
+            <h1 className="text-xl font-semibold text-slate-950">Hooli Survival</h1>
+            {!endingMode ? (
               <div className="flex flex-wrap items-center gap-3 text-[11px]">
                 <span className="mono uppercase tracking-[0.14em] text-slate-500">{t('game.session')}</span>
                 <span className="mono text-slate-900">{sessionId.slice(0, 8)}</span>
@@ -407,14 +388,9 @@ export default function GamePage() {
                 <span className="mono uppercase tracking-[0.14em] text-slate-500">{t('game.round')}</span>
                 <span className="mono text-slate-900">{round}/{maxRounds || '?'}</span>
               </div>
-            ) : (
-              <p className="mono text-xs text-black/60">
-                {t('game.session')} {sessionId.slice(0, 8)} • {t('game.round')} {round}/{maxRounds || '?'}
-              </p>
-            )
-          ) : null}
-        </div>
-        <div className={['grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto', editorialTheme ? 'md:w-full md:justify-self-stretch md:justify-end' : 'md:flex'].join(' ')}>
+            ) : null}
+          </div>
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto md:w-full md:justify-self-stretch md:justify-end">
           {status === 'active' ? (
             <button
               disabled={inputDisabled}
@@ -423,24 +399,14 @@ export default function GamePage() {
                 setMobileComposerOpen(false);
                 setMobilePanelOpen(true);
               }}
-              className={[
-                'mono rounded-[0.8rem] px-3 py-1.5 text-[12px] transition disabled:cursor-not-allowed md:hidden',
-                editorialTheme
-                  ? 'border border-slate-300 bg-white text-slate-800 hover:border-slate-500 disabled:border-slate-200 disabled:text-slate-300'
-                  : 'border border-black/40 text-black/70 hover:border-black hover:bg-white disabled:border-black/20 disabled:text-black/35',
-              ].join(' ')}
+              className="mono rounded-[0.8rem] border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-800 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 md:hidden"
             >
               {t('mobile.teamState')} ▾
             </button>
           ) : null}
           <button
             onClick={restartGame}
-            className={[
-              'mono rounded-[0.8rem] px-3 py-1.5 text-[12px] transition',
-              editorialTheme
-                ? 'border border-slate-300 bg-white text-slate-900 hover:border-slate-500 hover:bg-slate-50'
-                : 'border border-black/60 text-black hover:bg-black hover:text-white',
-            ].join(' ')}
+            className="mono rounded-[0.8rem] border border-slate-300 bg-white px-3 py-1.5 text-[12px] text-slate-900 transition hover:border-slate-500 hover:bg-slate-50"
           >
             {t('game.restart')}
           </button>
@@ -457,31 +423,23 @@ export default function GamePage() {
         <section
           className={[
             `flex min-h-0 min-w-0 flex-col ${endingMode ? 'mx-auto w-full max-w-5xl' : ''}`,
-            editorialTheme && !endingMode
-              ? 'rounded-[0.62rem] border border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,247,251,0.95))] p-3 shadow-[0_12px_24px_rgba(15,23,42,0.04)] sm:p-3.5'
-              : '',
+            !endingMode ? 'rounded-[0.62rem] border border-slate-300/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,247,251,0.95))] p-3 shadow-[0_12px_24px_rgba(15,23,42,0.04)] sm:p-3.5' : '',
           ].join(' ')}
         >
           <div className={endingMode ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
-            <ChatWindow messages={messages} assistantTyping={submitting && !settling && status === 'active'} showGeneratedBy={devMode} theme={theme} />
+            <ChatWindow messages={messages} assistantTyping={submitting && !settling && status === 'active'} showGeneratedBy={devMode} />
             {submitting && isPerfReviewFramingPick ? (
-              <SceneTransition message={t('transition.perf')} theme={theme} />
+              <SceneTransition message={t('transition.perf')} />
             ) : null}
-            {settling ? (
-              <SceneTransition message={t('transition.nextScene')} theme={theme} />
-            ) : null}
-            {waitingForSummary ? (
-              <SceneTransition message={t('transition.nextScene')} theme={theme} />
-            ) : null}
+            {settling ? <SceneTransition message={t('transition.nextScene')} /> : null}
+            {waitingForSummary ? <SceneTransition message={t('transition.nextScene')} /> : null}
             {summaryVisible && summaryEval ? (
-              <SceneSummaryCard evaluation={summaryEval} onContinue={revealPendingScene} theme={theme} />
+              <SceneSummaryCard evaluation={summaryEval} onContinue={revealPendingScene} />
             ) : null}
           </div>
-          {status === 'ended' ? (
-            <EndingView ending={ending} stats={state} onRestart={restartGame} theme={theme} />
-          ) : null}
+          {status === 'ended' ? <EndingView ending={ending} stats={state} onRestart={restartGame} /> : null}
           {!inputDisabled ? (
-            <div className={['mt-3 hidden gap-2 sm:mt-4 md:grid', editorialTheme ? 'md:grid-cols-1' : 'md:grid-cols-2'].join(' ')}>
+            <div className="mt-3 hidden gap-2 sm:mt-4 md:grid md:grid-cols-1">
               {isPerfReviewPickTwo ? (
                 <>
                   {options.map((option) => {
@@ -491,23 +449,9 @@ export default function GamePage() {
                         key={option.id}
                         disabled={inputDisabled}
                         onClick={() => togglePerfOption(option.id)}
-                        className={[
-                          'min-w-0 break-words rounded-[0.85rem] border px-3.5 py-2 text-left text-[12px] leading-[1.45] transition disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/5 disabled:text-black/40',
-                          editorialTheme
-                            ? selected
-                              ? 'rounded-none border-x-0 border-t-0 border-b border-blue-700 bg-transparent px-0 text-blue-700 shadow-none'
-                              : 'rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-transparent px-0 text-slate-800 shadow-none hover:border-slate-400 hover:text-slate-950'
-                            : selected
-                              ? 'border-black bg-black text-white'
-                              : 'border-black/40 bg-white text-black hover:bg-black hover:text-white',
-                        ].join(' ')}
+                        className={[desktopOptionBaseClass, selected ? desktopSelectedOptionClass : desktopUnselectedOptionClass].join(' ')}
                       >
-                        <span
-                          className={[
-                            'mono mr-2 text-xs',
-                            editorialTheme ? (selected ? 'text-blue-600' : 'text-slate-400') : selected ? 'text-white/70' : 'text-black/60',
-                          ].join(' ')}
-                        >
+                        <span className={['mono mr-2 text-xs', selected ? 'text-blue-600' : 'text-slate-400'].join(' ')}>
                           {option.id}.
                         </span>
                         {option.text}
@@ -517,24 +461,14 @@ export default function GamePage() {
                   <button
                     disabled={perfSubmitDisabled}
                     onClick={() => void submitPerfSelection()}
-                    className={[
-                      'rounded-[0.85rem] px-3.5 py-2 text-[12px] transition disabled:cursor-not-allowed',
-                      editorialTheme
-                        ? 'rounded-[0.58rem] border border-blue-700 bg-blue-700 text-white hover:bg-blue-800 disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400'
-                        : 'border border-black bg-black text-white hover:bg-white hover:text-black disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40',
-                    ].join(' ')}
+                    className={submitButtonClass}
                   >
                     {t('game.perfSubmit')} {selectedPerfOptions.length}/2
                   </button>
                   <button
                     disabled={inputDisabled}
                     onClick={() => inputRef.current?.focus()}
-                    className={[
-                      'rounded-[0.85rem] border px-3.5 py-2 text-left text-[12px] transition disabled:cursor-not-allowed',
-                      editorialTheme
-                        ? 'rounded-none border-0 bg-transparent px-0 text-slate-500 hover:text-slate-800 disabled:text-slate-300'
-                        : 'border-dashed border-black/40 bg-white text-black/75 hover:border-black disabled:border-black/20 disabled:text-black/35',
-                    ].join(' ')}
+                    className={desktopHintButtonClass}
                   >
                     {t('game.chooseInput')}
                   </button>
@@ -548,23 +482,9 @@ export default function GamePage() {
                         key={option.id}
                         disabled={inputDisabled}
                         onClick={() => togglePerfFramingOption(option.id)}
-                        className={[
-                          'min-w-0 break-words rounded-[0.85rem] border px-3.5 py-2 text-left text-[12px] leading-[1.45] transition disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/5 disabled:text-black/40',
-                          editorialTheme
-                            ? selected
-                              ? 'rounded-none border-x-0 border-t-0 border-b border-blue-700 bg-transparent px-0 text-blue-700 shadow-none'
-                              : 'rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-transparent px-0 text-slate-800 shadow-none hover:border-slate-400 hover:text-slate-950'
-                            : selected
-                              ? 'border-black bg-black text-white'
-                              : 'border-black/40 bg-white text-black hover:bg-black hover:text-white',
-                        ].join(' ')}
+                        className={[desktopOptionBaseClass, selected ? desktopSelectedOptionClass : desktopUnselectedOptionClass].join(' ')}
                       >
-                        <span
-                          className={[
-                            'mono mr-2 text-xs',
-                            editorialTheme ? (selected ? 'text-blue-600' : 'text-slate-400') : selected ? 'text-white/70' : 'text-black/60',
-                          ].join(' ')}
-                        >
+                        <span className={['mono mr-2 text-xs', selected ? 'text-blue-600' : 'text-slate-400'].join(' ')}>
                           {option.id}
                         </span>
                         {option.text}
@@ -574,24 +494,14 @@ export default function GamePage() {
                   <button
                     disabled={perfSubmitDisabled}
                     onClick={() => void submitPerfFramingSelection()}
-                    className={[
-                      'rounded-[0.85rem] px-3.5 py-2 text-[12px] transition disabled:cursor-not-allowed',
-                      editorialTheme
-                        ? 'rounded-[0.58rem] border border-blue-700 bg-blue-700 text-white hover:bg-blue-800 disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400'
-                        : 'border border-black bg-black text-white hover:bg-white hover:text-black disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40',
-                    ].join(' ')}
+                    className={submitButtonClass}
                   >
                     {t('game.perfSubmit')} {selectedPerfOptions.length}/2
                   </button>
                   <button
                     disabled={inputDisabled}
                     onClick={() => inputRef.current?.focus()}
-                    className={[
-                      'rounded-[0.85rem] border px-3.5 py-2 text-left text-[12px] transition disabled:cursor-not-allowed',
-                      editorialTheme
-                        ? 'rounded-none border-0 bg-transparent px-0 text-slate-500 hover:text-slate-800 disabled:text-slate-300'
-                        : 'border-dashed border-black/40 bg-white text-black/75 hover:border-black disabled:border-black/20 disabled:text-black/35',
-                    ].join(' ')}
+                    className={desktopHintButtonClass}
                   >
                     {t('game.chooseInput')}
                   </button>
@@ -603,26 +513,16 @@ export default function GamePage() {
                       key={option.id}
                       disabled={inputDisabled}
                       onClick={() => void submitTurn(option.id, option.text)}
-                      className={[
-                        'min-w-0 break-words rounded-[0.85rem] border px-3.5 py-2 text-left text-[12px] leading-[1.45] transition disabled:cursor-not-allowed',
-                        editorialTheme
-                          ? 'rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-transparent px-0 text-slate-800 shadow-none hover:border-slate-400 hover:text-slate-950 disabled:border-slate-100 disabled:text-slate-400'
-                          : 'border-black/40 bg-white text-black hover:bg-black hover:text-white disabled:border-black/20 disabled:bg-black/5 disabled:text-black/40',
-                      ].join(' ')}
+                      className={[desktopOptionBaseClass, desktopUnselectedOptionClass].join(' ')}
                     >
-                      <span className={['mono mr-2 text-xs', editorialTheme ? 'text-slate-400' : 'text-black/60'].join(' ')}>{option.id}.</span>
+                      <span className="mono mr-2 text-xs text-slate-400">{option.id}.</span>
                       {option.text}
                     </button>
                   ))}
                   <button
                     disabled={inputDisabled}
                     onClick={() => inputRef.current?.focus()}
-                    className={[
-                      `min-w-0 break-words rounded-[0.85rem] border px-3.5 py-2 text-left text-[12px] transition disabled:cursor-not-allowed ${options.length > 0 ? '' : 'md:col-span-2'}`,
-                      editorialTheme
-                        ? 'rounded-none border-0 bg-transparent px-0 text-slate-500 hover:text-slate-800 disabled:text-slate-300'
-                        : 'border-dashed border-black/40 bg-white text-black/75 hover:border-black disabled:border-black/20 disabled:text-black/35',
-                    ].join(' ')}
+                    className={`${desktopHintButtonClass} ${options.length > 0 ? '' : 'md:col-span-2'}`}
                   >
                     {options.length > 0 ? t('game.chooseInput') : t('game.freeInput')}
                   </button>
@@ -632,44 +532,31 @@ export default function GamePage() {
           ) : null}
           {status === 'active' ? (
             <>
-              <div className={editorialTheme ? 'hidden md:block rounded-[0.58rem] bg-transparent px-1 pb-0' : 'hidden md:block'}>
+              <div className="hidden rounded-[0.58rem] bg-transparent px-1 pb-0 md:block">
                 <InputBar
                   disabled={inputDisabled}
                   onSubmit={submitTurn}
                   onEmptySubmit={inputBarEmptySubmit}
                   inputRef={inputRef}
                   placeholder={settling ? t('game.settlingPlaceholder') : t('game.inputPlaceholder')}
-                  theme={theme}
                 />
-                <p className={['mt-2 text-xs mono', editorialTheme ? 'text-slate-500' : 'text-black/55'].join(' ')}>{t('game.freeInputHint')}</p>
+                <p className="mt-2 text-xs mono text-slate-500">{t('game.freeInputHint')}</p>
               </div>
             </>
           ) : null}
-          {error ? <p className={['mt-3 text-sm', editorialTheme ? 'text-rose-700' : 'text-black/70'].join(' ')}>{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-rose-700">{error}</p> : null}
         </section>
 
-        {!endingMode ? <StatPanel characters={characters} state={state} latestEval={latestEval} className="hidden md:block" theme={theme} /> : null}
+        {!endingMode ? <StatPanel characters={characters} state={state} latestEval={latestEval} className="hidden md:block" /> : null}
       </div>
 
       {status === 'active' ? (
-        <div
-          className={[
-            'fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-sm md:hidden',
-            editorialTheme
-              ? 'border-t border-slate-200 bg-[rgba(248,250,252,0.96)]'
-              : 'border-t border-black/15 bg-[rgba(246,246,246,0.96)]',
-          ].join(' ')}
-        >
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-[rgba(248,250,252,0.96)] px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm md:hidden">
           <div className="mx-auto max-w-7xl">
             <button
               disabled={inputDisabled}
               onClick={openMobileActions}
-              className={[
-                'mono w-full rounded-xl px-3 py-3 text-sm transition disabled:cursor-not-allowed',
-                editorialTheme
-                  ? 'border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400'
-                  : 'border border-black bg-black text-white hover:bg-white hover:text-black disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40',
-              ].join(' ')}
+              className="mono w-full rounded-xl border border-blue-600 bg-blue-600 px-3 py-3 text-sm text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400"
             >
               {t('mobile.chooseAction')}
             </button>
@@ -684,26 +571,16 @@ export default function GamePage() {
             onClick={closeMobileSurfaces}
             className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
           />
-          <div
-            className={[
-              'absolute inset-x-0 bottom-0 flex max-h-[78dvh] flex-col rounded-t-[1.75rem] px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3',
-              editorialTheme
-                ? 'border border-slate-200 bg-slate-50 shadow-[0_-24px_60px_rgba(15,23,42,0.16)]'
-                : 'border border-black/20 bg-[#f6f6f6] shadow-frame',
-            ].join(' ')}
-          >
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[78dvh] flex-col rounded-t-[1.75rem] border border-slate-200 bg-slate-50 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-24px_60px_rgba(15,23,42,0.16)]">
             <div className="mb-2 flex justify-end">
               <button
                 onClick={closeMobileSurfaces}
-                className={[
-                  'mono rounded-md bg-white/90 px-3 py-1 text-xs',
-                  editorialTheme ? 'border border-slate-300 text-slate-700' : 'border border-black/60 text-black shadow-frame',
-                ].join(' ')}
+                className="mono rounded-md border border-slate-300 bg-white/90 px-3 py-1 text-xs text-slate-700"
               >
                 {t('panel.close')}
               </button>
             </div>
-            <StatPanel characters={characters} state={state} latestEval={latestEval} className="flex-1 bg-white/95" theme={theme} />
+            <StatPanel characters={characters} state={state} latestEval={latestEval} className="flex-1 bg-white/95" />
           </div>
         </div>
       ) : null}
@@ -715,21 +592,11 @@ export default function GamePage() {
             onClick={closeMobileSurfaces}
             className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
           />
-          <div
-            className={[
-              'absolute inset-x-0 bottom-0 flex max-h-[82dvh] flex-col rounded-t-[1.75rem] px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3',
-              editorialTheme
-                ? 'border border-slate-200 bg-slate-50 shadow-[0_-24px_60px_rgba(15,23,42,0.16)]'
-                : 'border border-black/20 bg-[#f6f6f6] shadow-frame',
-            ].join(' ')}
-          >
+          <div className="absolute inset-x-0 bottom-0 flex max-h-[82dvh] flex-col rounded-t-[1.75rem] border border-slate-200 bg-slate-50 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-24px_60px_rgba(15,23,42,0.16)]">
             <div className="mb-2 flex justify-end">
               <button
                 onClick={closeMobileSurfaces}
-                className={[
-                  'mono rounded-md bg-white/90 px-3 py-1 text-xs',
-                  editorialTheme ? 'border border-slate-300 text-slate-700' : 'border border-black/60 text-black shadow-frame',
-                ].join(' ')}
+                className="mono rounded-md border border-slate-300 bg-white/90 px-3 py-1 text-xs text-slate-700"
               >
                 {t('panel.close')}
               </button>
@@ -740,10 +607,7 @@ export default function GamePage() {
                   {options.length > 0 ? (
                     <button
                       onClick={backToMobileOptions}
-                      className={[
-                        'mono mb-2 rounded-xl border px-3 py-3 text-left text-sm transition',
-                        editorialTheme ? 'rounded-none border-0 bg-transparent px-0 text-slate-500 hover:text-slate-800' : 'border-dashed border-black/40 bg-white text-black/75 hover:border-black',
-                      ].join(' ')}
+                      className={`mono mb-2 ${mobileHintButtonClass}`}
                     >
                       {t('mobile.backToOptions')}
                     </button>
@@ -754,9 +618,8 @@ export default function GamePage() {
                     onEmptySubmit={mobileInputBarEmptySubmit}
                     inputRef={inputRef}
                     placeholder={settling ? t('game.settlingPlaceholder') : t('game.inputPlaceholder')}
-                    theme={theme}
                   />
-                  <p className={['mt-2 text-xs mono', editorialTheme ? 'text-slate-500' : 'text-black/55'].join(' ')}>{t('game.freeInputHint')}</p>
+                  <p className="mt-2 text-xs mono text-slate-500">{t('game.freeInputHint')}</p>
                 </div>
               ) : (
                 <div className="grid gap-2">
@@ -769,18 +632,9 @@ export default function GamePage() {
                             key={option.id}
                             disabled={inputDisabled}
                             onClick={() => togglePerfOption(option.id)}
-                            className={[
-                              'min-w-0 break-words rounded-xl border px-3 py-3 text-left text-sm transition disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/5 disabled:text-black/40',
-                              editorialTheme
-                                ? selected
-                                  ? 'rounded-none border-x-0 border-t-0 border-b border-blue-700 bg-transparent px-0 text-blue-700'
-                                  : 'rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-transparent px-0 text-slate-800 hover:border-slate-400 hover:text-slate-950'
-                                : selected
-                                  ? 'border-black bg-black text-white'
-                                  : 'border-black/40 bg-white text-black hover:bg-black hover:text-white',
-                            ].join(' ')}
+                            className={[mobileOptionClass, selected ? 'border-blue-700 text-blue-700' : 'border-slate-200 text-slate-800 hover:border-slate-400 hover:text-slate-950 disabled:border-slate-100 disabled:text-slate-400'].join(' ')}
                           >
-                            <span className={`mono mr-2 text-xs ${editorialTheme ? (selected ? 'text-blue-600' : 'text-slate-400') : selected ? 'text-white/70' : 'text-black/60'}`}>
+                            <span className={`mono mr-2 text-xs ${selected ? 'text-blue-600' : 'text-slate-400'}`}>
                               {option.id}.
                             </span>
                             {option.text}
@@ -790,14 +644,14 @@ export default function GamePage() {
                       <button
                         disabled={perfSubmitDisabled}
                         onClick={() => void submitPerfSelectionFromMobile()}
-                        className={editorialTheme ? 'rounded-[0.58rem] border border-blue-700 bg-blue-700 px-3 py-2 text-sm text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400' : 'rounded-xl border border-black bg-black px-3 py-3 text-sm text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40'}
+                        className={submitButtonClass}
                       >
                         {t('game.perfSubmit')} {selectedPerfOptions.length}/2
                       </button>
                       <button
                         disabled={inputDisabled}
                         onClick={openMobileComposer}
-                        className={editorialTheme ? 'rounded-none border-0 bg-transparent px-0 py-2 text-left text-sm text-slate-500 transition hover:text-slate-800 disabled:cursor-not-allowed disabled:text-slate-300' : 'rounded-xl border border-black/40 bg-white px-3 py-3 text-left text-sm text-black/75 transition hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:border-black/20 disabled:text-black/35'}
+                        className={mobileHintButtonClass}
                       >
                         {t('mobile.writeCustom')}
                       </button>
@@ -811,18 +665,9 @@ export default function GamePage() {
                             key={option.id}
                             disabled={inputDisabled}
                             onClick={() => togglePerfFramingOption(option.id)}
-                            className={[
-                              'min-w-0 break-words rounded-xl border px-3 py-3 text-left text-sm transition disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/5 disabled:text-black/40',
-                              editorialTheme
-                                ? selected
-                                  ? 'rounded-none border-x-0 border-t-0 border-b border-blue-700 bg-transparent px-0 text-blue-700'
-                                  : 'rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-transparent px-0 text-slate-800 hover:border-slate-400 hover:text-slate-950'
-                                : selected
-                                  ? 'border-black bg-black text-white'
-                                  : 'border-black/40 bg-white text-black hover:bg-black hover:text-white',
-                            ].join(' ')}
+                            className={[mobileOptionClass, selected ? 'border-blue-700 text-blue-700' : 'border-slate-200 text-slate-800 hover:border-slate-400 hover:text-slate-950 disabled:border-slate-100 disabled:text-slate-400'].join(' ')}
                           >
-                            <span className={`mono mr-2 text-xs ${editorialTheme ? (selected ? 'text-blue-600' : 'text-slate-400') : selected ? 'text-white/70' : 'text-black/60'}`}>
+                            <span className={`mono mr-2 text-xs ${selected ? 'text-blue-600' : 'text-slate-400'}`}>
                               {option.id}
                             </span>
                             {option.text}
@@ -832,14 +677,14 @@ export default function GamePage() {
                       <button
                         disabled={perfSubmitDisabled}
                         onClick={() => void submitPerfFramingSelectionFromMobile()}
-                        className={editorialTheme ? 'rounded-[0.58rem] border border-blue-700 bg-blue-700 px-3 py-2 text-sm text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400' : 'rounded-xl border border-black bg-black px-3 py-3 text-sm text-white transition hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/20 disabled:text-black/40'}
+                        className={submitButtonClass}
                       >
                         {t('game.perfSubmit')} {selectedPerfOptions.length}/2
                       </button>
                       <button
                         disabled={inputDisabled}
                         onClick={openMobileComposer}
-                        className={editorialTheme ? 'rounded-none border-0 bg-transparent px-0 py-2 text-left text-sm text-slate-500 transition hover:text-slate-800 disabled:cursor-not-allowed disabled:text-slate-300' : 'rounded-xl border border-black/40 bg-white px-3 py-3 text-left text-sm text-black/75 transition hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:border-black/20 disabled:text-black/35'}
+                        className={mobileHintButtonClass}
                       >
                         {t('mobile.writeCustom')}
                       </button>
@@ -851,16 +696,16 @@ export default function GamePage() {
                           key={option.id}
                           disabled={inputDisabled}
                           onClick={() => void submitTurnFromMobile(option.id, option.text)}
-                          className={editorialTheme ? 'min-w-0 break-words rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-transparent px-0 py-3 text-left text-sm text-slate-800 transition hover:border-slate-400 hover:text-slate-950 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-400' : 'min-w-0 break-words rounded-xl border border-black/40 bg-white px-3 py-3 text-left text-sm text-black transition hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:border-black/20 disabled:bg-black/5 disabled:text-black/40'}
+                          className={[mobileOptionClass, 'border-slate-200 text-slate-800 hover:border-slate-400 hover:text-slate-950 disabled:border-slate-100 disabled:text-slate-400'].join(' ')}
                         >
-                          <span className={editorialTheme ? 'mono mr-2 text-xs text-slate-400' : 'mono mr-2 text-xs text-black/60'}>{option.id}.</span>
+                          <span className="mono mr-2 text-xs text-slate-400">{option.id}.</span>
                           {option.text}
                         </button>
                       ))}
                       <button
                         disabled={inputDisabled}
                         onClick={openMobileComposer}
-                        className={editorialTheme ? 'rounded-none border-0 bg-transparent px-0 py-2 text-left text-sm text-slate-500 transition hover:text-slate-800 disabled:cursor-not-allowed disabled:text-slate-300' : 'rounded-xl border border-black/40 bg-white px-3 py-3 text-left text-sm text-black/75 transition hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:border-black/20 disabled:text-black/35'}
+                        className={mobileHintButtonClass}
                       >
                         {options.length > 0 ? t('mobile.writeCustom') : t('game.freeInput')}
                       </button>

@@ -4,39 +4,22 @@ import { useI18n } from '@/lib/i18n';
 
 type SceneTransitionProps = {
   message?: string;
-  theme?: 'default' | 'editorial';
 };
 
-export default function SceneTransition({ message, theme = 'default' }: SceneTransitionProps) {
+export default function SceneTransition({ message }: SceneTransitionProps) {
   const { t } = useI18n();
   const copy = message || t('transition.settling');
   return (
-    <div
-      className={[
-        'mt-4 px-1 py-1 text-[12px] mono',
-        theme === 'editorial'
-          ? 'text-slate-700'
-          : 'border border-dashed border-black/40 bg-white/70 text-black/70',
-      ].join(' ')}
-    >
-      {theme === 'editorial' ? (
-        <div className="px-1 py-3">
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-300" />
-            <div className="inline-flex items-center px-1 py-1">
-              <span className="text-[11px] uppercase tracking-[0.18em] text-slate-700">{copy}</span>
-            </div>
-            <div className="h-px flex-1 bg-slate-300" />
+    <div className="mt-4 px-1 py-1 text-[12px] mono text-slate-700">
+      <div className="px-1 py-3">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-300" />
+          <div className="inline-flex items-center px-1 py-1">
+            <span className="text-[11px] uppercase tracking-[0.18em] text-slate-700">{copy}</span>
           </div>
+          <div className="h-px flex-1 bg-slate-300" />
         </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-black" />
-            <span>⏳ {copy}</span>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

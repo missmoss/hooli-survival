@@ -7,7 +7,6 @@ import { Locale, useI18n } from '@/lib/i18n';
 type Props = {
   evaluation: LatestEval;
   onContinue: () => void;
-  theme?: 'default' | 'editorial';
 };
 
 const X_QUOTES: Record<Locale, string[]> = {
@@ -136,43 +135,25 @@ function deltaEntries(evaluation: LatestEval, locale: Locale): string[] {
   return values.length > 0 ? values : [locale === 'zh-Hant' ? '沒有數值變動' : 'No stat changes'];
 }
 
-export default function SceneSummaryCard({ evaluation, onContinue, theme = 'default' }: Props) {
+export default function SceneSummaryCard({ evaluation, onContinue }: Props) {
   const { locale, t } = useI18n();
   const deltas = deltaEntries(evaluation, locale);
   const shareUrls = buildShareUrls(evaluation, SITE_URL, locale);
 
   return (
-    <section
-      className={[
-        'mt-3 rounded-[0.8rem] p-4 sm:mt-4 sm:p-5',
-        theme === 'editorial'
-          ? 'border border-slate-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(247,249,252,0.95))] shadow-[0_10px_22px_rgba(15,23,42,0.04)]'
-          : 'border border-black/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,248,248,0.92))] shadow-frame',
-      ].join(' ')}
-    >
-      <div
-        className={[
-          'mono inline-flex rounded-full px-2.5 py-1 text-[11px] tracking-[0.16em]',
-          theme === 'editorial' ? 'border border-slate-200 bg-slate-100/80 text-slate-500' : 'border border-black/20 bg-black/[0.03] text-black/58',
-        ].join(' ')}
-      >
+    <section className="mt-3 rounded-[0.8rem] border border-slate-300/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(247,249,252,0.95))] p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)] sm:mt-4 sm:p-5">
+      <div className="mono inline-flex rounded-full border border-slate-200 bg-slate-100/80 px-2.5 py-1 text-[11px] tracking-[0.16em] text-slate-500">
         {t('summary.eyebrow')}
       </div>
-      <h2 className={['mt-3 text-xl font-semibold tracking-[-0.02em] sm:text-2xl', theme === 'editorial' ? 'text-slate-950' : 'text-black'].join(' ')}>
+      <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-2xl">
         {pickHeadline(locale, evaluation)}
       </h2>
-      <p className={['mono mt-2 text-xs tracking-[0.14em]', theme === 'editorial' ? 'text-slate-500' : 'text-black/52'].join(' ')}>
+      <p className="mono mt-2 text-xs tracking-[0.14em] text-slate-500">
         {t('summary.rating')}: {ratingLabel(locale, evaluation.rating)}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {deltas.map((entry) => (
-          <div
-            key={entry}
-          className={[
-            'rounded-full border px-3 py-1.5 text-sm',
-            theme === 'editorial' ? 'border-slate-200 bg-white text-slate-700' : 'border-black/15 bg-black/[0.03] text-black/82',
-          ].join(' ')}
-          >
+          <div key={entry} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700">
             {entry}
           </div>
         ))}
@@ -180,16 +161,11 @@ export default function SceneSummaryCard({ evaluation, onContinue, theme = 'defa
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           onClick={onContinue}
-          className={[
-            'mono rounded-[0.85rem] px-3.5 py-2 text-[12px] transition sm:w-auto',
-            theme === 'editorial'
-              ? 'border border-blue-600 bg-blue-600 text-white shadow-[0_10px_20px_rgba(59,130,246,0.14)] hover:bg-blue-700'
-              : 'border border-black bg-black text-white hover:bg-white hover:text-black',
-          ].join(' ')}
+          className="mono rounded-[0.85rem] border border-blue-600 bg-blue-600 px-3.5 py-2 text-[12px] text-white shadow-[0_10px_20px_rgba(59,130,246,0.14)] transition hover:bg-blue-700 sm:w-auto"
         >
           {t('summary.continue')}
         </button>
-        <span className={['mono text-[11px]', theme === 'editorial' ? 'text-slate-400' : 'text-black/38'].join(' ')}>{t('summary.share')}</span>
+        <span className="mono text-[11px] text-slate-400">{t('summary.share')}</span>
         {[
           { href: shareUrls.x, domain: 'x.com', label: 'X' },
           { href: shareUrls.threads, domain: 'threads.net', label: 'Threads' },
@@ -201,10 +177,7 @@ export default function SceneSummaryCard({ evaluation, onContinue, theme = 'defa
             target="_blank"
             rel="noreferrer"
             title={label}
-            className={[
-              'flex h-6 w-6 items-center justify-center rounded-md border transition hover:opacity-100',
-              theme === 'editorial' ? 'border-slate-200 bg-white opacity-70' : 'border-black/15 bg-white/70 opacity-60',
-            ].join(' ')}
+            className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-white opacity-70 transition hover:opacity-100"
           >
             <img
               src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
